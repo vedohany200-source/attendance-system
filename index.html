@@ -30,6 +30,8 @@ footer{margin-top:14px;text-align:center;color:#6b7785;font-weight:600;font-size
 .message-info{background:#1565c0;}
 .message-danger{background:#e53935;}
 .message-warning{background:#f9a825;}
+.link-buttons{margin-top:10px;text-align:center;}
+.link-buttons button{margin:4px;}
 </style>
 </head>
 <body>
@@ -39,6 +41,11 @@ footer{margin-top:14px;text-align:center;color:#6b7785;font-weight:600;font-size
   <div class="sub">نسخة كاملة — powred by fady</div>
   <div class="clock" id="liveClock">00:00:00</div>
 </header>
+
+<div class="card">
+<h2>اختيار الدكتور لتسجيل الحضور والانصراف</h2>
+<div class="link-buttons" id="doctorLinks"></div>
+</div>
 
 <div class="card">
 <h2>تسجيل الحضور والانصراف</h2>
@@ -103,27 +110,34 @@ function showMessage(text,type){
   document.body.appendChild(msgDiv);setTimeout(()=>msgDiv.remove(),3000);
 }
 
+// إنشاء أزرار روابط الدكاترة
+function renderDoctorLinks(){
+  const container = document.getElementById('doctorLinks');
+  userCodes.forEach(u=>{
+    const btn = document.createElement('button');
+    btn.className='btn-blue';
+    btn.textContent=u.name;
+    btn.onclick = ()=>{window.location.href='?user='+u.code;};
+    container.appendChild(btn);
+  });
+  // زر الأدمن
+  const adminBtn = document.createElement('button');
+  adminBtn.className='btn-blue';
+  adminBtn.textContent='أدمن';
+  adminBtn.onclick=()=>{window.location.href='?user=ramy12';};
+  container.appendChild(adminBtn);
+}
+
 function getCodeFromURL(){const params=new URLSearchParams(window.location.search);return params.get('user');}
 
 function enterCodeFromURL(){
     const code=getCodeFromURL();
+    if(!code) return;
     const user=userCodes.find(u=>u.code===code);
     const admin=admins.find(a=>a.code===code);
-    if(admin){ currentUser=admin; renderAllPeople(); document.getElementById('weeklyReportBtn').style.display='inline-block'; return; }
+    if(admin){ currentUser=admin; renderUser(admin); document.getElementById('weeklyReportBtn').style.display='inline-block'; return; }
     if(!user){ alert("الكود غير صحيح!"); return; }
-    currentUser=user;renderUser(user);
-}
-
-function renderAllPeople(){
-  const tbody=document.querySelector('#peopleTable tbody');tbody.innerHTML='';
-  people.forEach(p=>{
-    const tr=document.createElement('tr');
-    const closeInput=document.createElement('input');closeInput.type='text';closeInput.placeholder='اكتب قائمة التقفيل';closeInput.className='reasonInput';closeInput.id='closeNote-'+p.name;
-    tr.innerHTML=`<td>${p.name}</td><td>${p.shiftStart}-${p.shiftEnd}</td><td>${p.dayOff||'-'}</td>
-                  <td>${(p.name==="د. روجينا"||p.name==="د. فادي")?closeInput.outerHTML:''}</td>
-                  <td>-</td><td>-</td><td>-</td>`;
-    tbody.appendChild(tr);
-  });
+    currentUser=user; renderUser(user);
 }
 
 function renderUser(user){
@@ -186,6 +200,7 @@ function sendWeeklyReport(){const phoneNumber="201113279672";if(logs.length===0)
 let message="تقرير الحضور الأسبوعي:\n";logs.forEach(l=>{message+=`${l.date} - ${l.name} - ${l.action} - ${l.time} - ${l.status} - ${l.reason}\n`;});
 const url=`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;window.open(url,"_blank");}
 
+renderDoctorLinks();
 enterCodeFromURL();
 </script>
 </body>
