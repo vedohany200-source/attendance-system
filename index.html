@@ -6,13 +6,15 @@
 <title>نظام حضور وانصراف — powred by fady</title>
 <style>
 :root{
-  --bg:#f5f8fb; --card:#fff; --accent:#1565c0; --accent-2:#0288d1; --muted:#6b7785; --danger:#e53935; --ok:#2e7d32;
+  --bg:#f5f8fb; --card:#fff; --accent:#1565c0; --accent-2:#0288d1; --muted:#6b7785; --danger:#e53935; --ok:#2e7d32; --warning:#f9a825;
 }
 *{box-sizing:border-box}
 body{margin:0;padding:14px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:#0f1720}
 .wrap{max-width:900px;margin:0 auto}
-header{display:flex;flex-direction:column;align-items:center;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px;border-radius:10px;text-align:center;}
-header h1{margin:0;font-size:18px} header .sub{font-size:13px;opacity:.95}
+header{display:flex;flex-direction:column;align-items:center;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px;border-radius:10px;text-align:center;position:relative;}
+header h1{margin:0;font-size:18px} 
+header .sub{font-size:13px;opacity:.95;}
+header .clock{position:absolute;top:12px;left:12px;font-size:14px;font-weight:600;}
 .card{background:var(--card);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);border:1px solid rgba(16,24,40,.04);}
 h2{margin:0 0 8px;color:var(--accent)}
 table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
@@ -23,22 +25,25 @@ button{padding:6px 10px;border-radius:6px;border:0;cursor:pointer;font-size:13px
 .btn-blue{background:var(--accent);color:#fff;margin:2px;}
 .reasonInput{width:90%;margin-top:4px}
 footer{margin-top:14px;text-align:center;color:#6b7785;font-weight:600;font-size:13px}
-.messageDiv{padding:8px;margin:6px 0;border-radius:6px;color:#fff;font-weight:600;text-align:center;}
+.messageDiv{padding:12px 20px;margin:0 auto 10px;border-radius:6px;color:#fff;font-weight:600;text-align:center;position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;min-width:300px;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
 .message-success{background:#2e7d32;}
 .message-info{background:#1565c0;}
+.message-danger{background:#e53935;}
+.message-warning{background:#f9a825;}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-<h1>⚕️ نظام حضور وانصراف</h1>
-<div class="sub">نسخة كاملة — powred by fady</div>
+  <h1>⚕️ نظام حضور وانصراف</h1>
+  <div class="sub">نسخة كاملة — powred by fady</div>
+  <div class="clock" id="liveClock">00:00:00</div>
 </header>
 
 <div class="card">
 <h2>تسجيل الحضور والانصراف</h2>
 <table id="peopleTable">
-<thead><tr><th>الاسم</th><th>الشيفت</th><th>إجازة</th><th>قائمة التقفيل</th><th>حضور</th><th>انصراف</th></tr></thead>
+<thead><tr><th>الاسم</th><th>الشيفت</th><th>إجازة</th><th>قائمة التقفيل</th><th>حضور</th><th>انصراف</th><th>الوقت</th></tr></thead>
 <tbody></tbody>
 </table>
 </div>
@@ -49,7 +54,7 @@ footer{margin-top:14px;text-align:center;color:#6b7785;font-weight:600;font-size
 <thead><tr><th>الاسم</th><th>نوع</th><th>الوقت</th><th>التاريخ</th><th>الحالة</th><th>السبب</th></tr></thead>
 <tbody></tbody>
 </table>
-<button class="btn-blue" onclick="sendWeeklyReport()">إرسال تقرير أسبوعي على واتساب</button>
+<button class="btn-blue" id="weeklyReportBtn" style="display:none;" onclick="sendWeeklyReport()">إرسال تقرير أسبوعي على واتساب</button>
 </div>
 
 <footer>
@@ -58,13 +63,8 @@ footer{margin-top:14px;text-align:center;color:#6b7785;font-weight:600;font-size
 </div>
 
 <script>
-const adminEmail = "vedohany200@gmail.com";
-function isAdmin(){
-  const email = prompt("أدخل بريدك الإلكتروني للتحقق كأدمن:");
-  if(email === adminEmail){alert("تم تسجيل الدخول كأدمن ✅"); return true;}
-  else {alert("غير مسموح لك بالتعديل ❌"); return false;}
-}
-
+let currentUser = null;
+let logs = [];
 let people = [
   { name:"د. روجينا",shiftStart:"10:00 ص",shiftEnd:"6:00 م",dayOff:null,role:"doctor"},
   { name:"د. مارينا",shiftStart:"12:00 م",shiftEnd:"8:00 م",dayOff:null,role:"doctor"},
@@ -75,156 +75,118 @@ let people = [
   { name:"يوسف ثروت",shiftStart:"10:00 ص",shiftEnd:"8:00 م",dayOff:null,role:"doctor"}
 ];
 
-let logs = [];
+const userCodes = [
+  { name: "د. روجينا", code: "RO12" },
+  { name: "د. مارينا", code: "MR12" },
+  { name: "د. فادي", code: "FD18" },
+  { name: "د. كاتي", code: "KT06" },
+  { name: "فادي عماد", code: "FA05" },
+  { name: "جرجس هلال", code: "GH02" },
+  { name: "يوسف ثروت", code: "YT10" }
+];
 
-function loadData(){
-  const saved = localStorage.getItem('attendanceData');
-  const todayDate = new Date().toLocaleDateString('ar-EG');
-  if(saved){
-    const obj = JSON.parse(saved);
-    people = obj.people || people;
-    if(obj.lastDate === todayDate){
-      logs = obj.logs || [];
-    } else {
-      logs = [];
-    }
-  }
+const admins = [
+  { name: "أدمن", code: "ramy12" }
+];
+
+function formatTime12h(date){
+  let h=date.getHours(),m=date.getMinutes(),s=date.getSeconds(),ampm=h>=12?'م':'ص';
+  h=h%12;h=h?h:12;
+  return h+':'+m.toString().padStart(2,'0')+':'+s.toString().padStart(2,'0')+' '+ampm;
 }
 
-function saveData(){
-  const todayDate = new Date().toLocaleDateString('ar-EG');
-  localStorage.setItem('attendanceData', JSON.stringify({people,logs,lastDate: todayDate}));
+function updateClock(){document.getElementById('liveClock').textContent=formatTime12h(new Date());}
+setInterval(updateClock,1000);updateClock();
+
+function showMessage(text,type){
+  const msgDiv=document.createElement('div');msgDiv.className='messageDiv message-'+type;msgDiv.textContent=text;
+  document.body.appendChild(msgDiv);setTimeout(()=>msgDiv.remove(),3000);
 }
 
-const weekdaysAr={"Sunday":"الأحد","Monday":"الإثنين","Tuesday":"الثلاثاء","Wednesday":"الأربعاء","Thursday":"الخميس","Friday":"الجمعة","Saturday":"السبت"};
-function dayNameEn(d=new Date()){return d.toLocaleDateString('en-US',{weekday:'long'})}
+function getCodeFromURL(){const params=new URLSearchParams(window.location.search);return params.get('user');}
 
-function toMinutes12h(hm){
-  let [time, meridiem] = hm.split(' ');
-  let [h, m] = time.split(':').map(Number);
-  if(meridiem==='م' && h<12) h+=12;
-  if(meridiem==='ص' && h===12) h=0;
-  return h*60 + (m||0);
+function enterCodeFromURL(){
+    const code=getCodeFromURL();
+    const user=userCodes.find(u=>u.code===code);
+    const admin=admins.find(a=>a.code===code);
+    if(admin){ currentUser=admin; renderAllPeople(); document.getElementById('weeklyReportBtn').style.display='inline-block'; return; }
+    if(!user){ alert("الكود غير صحيح!"); return; }
+    currentUser=user;renderUser(user);
 }
 
-function formatTime12h(date) {
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    const ampm = hours >= 12 ? 'م' : 'ص';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const minutesStr = minutes.toString().padStart(2, '0');
-    return hours + ':' + minutesStr + ' ' + ampm;
-}
-
-function renderPeople(){
+function renderAllPeople(){
   const tbody=document.querySelector('#peopleTable tbody');tbody.innerHTML='';
-  people.forEach((p,idx)=>{
+  people.forEach(p=>{
     const tr=document.createElement('tr');
-    const sel=document.createElement('select');
-    sel.add(new Option('لم يتم التحديد',''));
-    Object.keys(weekdaysAr).forEach(d=>{
-      const opt=new Option(weekdaysAr[d],d);
-      if(p.dayOff===d) opt.selected=true; sel.add(opt);
-    });
-    sel.onchange=e=>{
-      if(isAdmin()) people[idx].dayOff=e.target.value||null;
-      else e.target.value=p.dayOff||"";
-      saveData();
-    };
-    let closeInput = document.createElement('input');
-    closeInput.type='text';
-    closeInput.placeholder='اكتب قائمة التقفيل';
-    closeInput.className='reasonInput';
-    closeInput.id = 'closeNote-'+p.name;
-
-    tr.innerHTML=`<td>${p.name}</td><td>${p.shiftStart}-${p.shiftEnd}</td><td></td>
-      <td></td>
-      <td><button class="btn-blue" onclick="sign('${p.name}','${p.shiftStart}','${p.shiftEnd}','${p.role}')">حضور</button></td>
-      <td><button class="btn-blue" onclick="sign('${p.name}','${p.shiftStart}','${p.shiftEnd}','${p.role}','out')">انصراف</button></td>`;
-    tr.children[2].appendChild(sel);
-    // إضافة حقل التقفيل لد. روجينا ود. فادي
-    if(p.name==="د. روجينا" || p.name==="د. فادي") tr.children[3].appendChild(closeInput);
+    const closeInput=document.createElement('input');closeInput.type='text';closeInput.placeholder='اكتب قائمة التقفيل';closeInput.className='reasonInput';closeInput.id='closeNote-'+p.name;
+    tr.innerHTML=`<td>${p.name}</td><td>${p.shiftStart}-${p.shiftEnd}</td><td>${p.dayOff||'-'}</td>
+                  <td>${(p.name==="د. روجينا"||p.name==="د. فادي")?closeInput.outerHTML:''}</td>
+                  <td>-</td><td>-</td><td>-</td>`;
     tbody.appendChild(tr);
   });
 }
 
-function renderLogs(){
-  const tbody=document.querySelector('#logTable tbody');tbody.innerHTML='';
-  logs.forEach(l=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${l.name}</td><td>${l.action}</td><td>${l.time}</td><td>${l.date}</td><td>${l.status}</td><td>${l.reason||'-'}</td>`;
-    tbody.appendChild(tr);
-  });
+function renderUser(user){
+  const tbody=document.querySelector('#peopleTable tbody');tbody.innerHTML='';
+  const p=people.find(p=>p.name===user.name);
+  const tr=document.createElement('tr');
+  const closeInput=document.createElement('input');closeInput.type='text';closeInput.placeholder='اكتب قائمة التقفيل';closeInput.className='reasonInput';closeInput.id='closeNote-'+p.name;
+  tr.innerHTML=`<td>${p.name}</td><td>${p.shiftStart}-${p.shiftEnd}</td><td></td><td></td>
+                 <td><button onclick="sign('${p.name}','${p.shiftStart}','${p.shiftEnd}','${p.role}')">حضور</button></td>
+                 <td><button onclick="sign('${p.name}','${p.shiftStart}','${p.shiftEnd}','${p.role}','out')">انصراف</button></td>
+                 <td id="timer-${p.name}"></td>`;
+  if(p.name==="د. روجينا"||p.name==="د. فادي") tr.children[3].appendChild(closeInput);
+  tbody.appendChild(tr);
+  if(user.name==="د. فادي") document.getElementById('weeklyReportBtn').style.display='inline-block';
 }
 
 function sign(name,start,end,role,force){
-  const action=force==='out'?'انصراف':'حضور';
-  const now=new Date(); 
-  const time=formatTime12h(now);
-  const todayDate = now.toLocaleDateString('ar-EG');
-
-  const startMin=toMinutes12h(start),endMin=toMinutes12h(end),currMin=now.getHours()*60+now.getMinutes();
-  let adjCurr=currMin;
-  if(endMin<=startMin){ if(currMin<startMin) adjCurr+=24*60; }
-
-  if(adjCurr<startMin && action==='حضور'){ alert(`لا يمكن تسجيل ${action} قبل بداية الشيفت (${start})`); return; }
-
-  let status='في الميعاد',reason='';
-
-  if((action==='حضور' && adjCurr>startMin) || (action==='انصراف' && adjCurr<endMin)){
-    status = (action==='حضور')?'تأخير':'انصراف مبكر';
-    while(!reason){
-      reason = prompt(`السبب إجباري لـ ${status}:`,'مثال: مرض / ظرف شخصي / نقل مهمة');
-      if(!reason) alert('يجب كتابة السبب قبل المتابعة!');
-    }
-  }
-
-  const today=dayNameEn();
-  const person=people.find(p=>p.name===name);
+  const action = force==='out' ? 'انصراف' : 'حضور';
+  const now = new Date();
+  const time = formatTime12h(now);
+  const person = people.find(p=>p.name===name);
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long'});
   if(person && person.dayOff===today){alert(`${name} في إجازة اليوم`);return;}
-
-  // التحقق من قائمة التقفيل لد. روجينا ود. فادي عند الانصراف
-  if((name==="د. روجينا" || name==="د. فادي") && action==='انصراف'){
-    const note = document.getElementById("closeNote-"+name).value.trim();
+  
+  let reason=''; 
+  if(action==='انصراف' || action==='حضور'){ 
+    reason=prompt(`السبب (اختياري):`,''); 
+  }
+  
+  if((name==="د. روجينا"||name==="د. فادي") && action==='انصراف'){ 
+    const note=document.getElementById("closeNote-"+name).value.trim();
     if(!note){ alert("يجب كتابة قائمة التقفيل قبل الانصراف!"); return; }
-    reason += " | تقفيل: " + note;
+    if(reason) reason+=" | "; reason+="تقفيل: "+note;
   }
 
-  logs.push({name,action,time,date:todayDate,status,reason,role});
-  saveData();
+  logs.push({name, action, time, date: now.toLocaleDateString('ar-EG'), status:'-', reason:reason||'-', role});
+  localStorage.setItem('attendanceData',JSON.stringify({people,logs,lastDate:now.toLocaleDateString('ar-EG')}));
   renderLogs();
 
-  if(action==='حضور'){
-    const msgDiv = document.createElement('div'); msgDiv.className='messageDiv message-success';
-    msgDiv.textContent = "بارك يارب اليوم اتمني اليوم يمشي معاكم كويس ❤️";
-    document.body.insertBefore(msgDiv, document.querySelector('.wrap'));
-    setTimeout(()=>msgDiv.remove(),3000);
-  }
-  if(action==='انصراف'){
-    const msgDiv = document.createElement('div'); msgDiv.className='messageDiv message-info';
-    msgDiv.textContent = "شكرًا لك على يومك، نتمنى لك مساء سعيد 🌙";
-    document.body.insertBefore(msgDiv, document.querySelector('.wrap'));
-    setTimeout(()=>msgDiv.remove(),3000);
+  const timerCell = document.getElementById('timer-' + name);
+  if(action==='حضور' && timerCell){
+    let startTime = Date.now();
+    timerCell.textContent = '0:00:00';
+    setInterval(()=>{
+      const diff = Date.now() - startTime;
+      const hours = Math.floor(diff / 1000 / 3600);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      timerCell.textContent = `${hours}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    },1000);
   }
 
-  alert(`${name} — تم تسجيل ${action} (${status})`);
+  if(action==='حضور') showMessage("بارك يارب اليوم اتمني اليوم يمشي معاكم كويس ❤️",'success');
+  if(action==='انصراف') showMessage("شكرًا لك على يومك، نتمنى لك مساء سعيد 🌙",'info');
 }
 
-function sendWeeklyReport() {
-    const phoneNumber = "201113279672"; // رقم واتساب بالصيغة الدولية
-    if(logs.length===0){alert("لا توجد بيانات لإرسال التقرير"); return;}
-    let message = "تقرير الحضور الأسبوعي:\n";
-    logs.forEach(l => {
-        message += `${l.date} - ${l.name} - ${l.action} - ${l.time} - ${l.status} - ${l.reason}\n`;
-    });
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-}
+function renderLogs(){const tbody=document.querySelector('#logTable tbody');tbody.innerHTML='';logs.forEach(l=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${l.name}</td><td>${l.action}</td><td>${l.time}</td><td>${l.date}</td><td>${l.status}</td><td>${l.reason||'-'}</td>`;tbody.appendChild(tr);});}
 
-loadData();
-renderPeople();
-renderLogs();
+function sendWeeklyReport(){const phoneNumber="201113279672";if(logs.length===0){alert("لا توجد بيانات لإرسال التقرير");return;}
+let message="تقرير الحضور الأسبوعي:\n";logs.forEach(l=>{message+=`${l.date} - ${l.name} - ${l.action} - ${l.time} - ${l.status} - ${l.reason}\n`;});
+const url=`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;window.open(url,"_blank");}
+
+enterCodeFromURL();
 </script>
 </body>
 </html>
