@@ -1,184 +1,376 @@
-<!doctype html>
+
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>نظام حضور وانصراف — powred by fady</title>
-<style>
-:root{
-  --bg:#f5f8fb; --card:#fff; --accent:#1565c0; --accent-2:#0288d1; --muted:#6b7785; --danger:#e53935; --ok:#2e7d32;
-}
-*{box-sizing:border-box}
-body{margin:0;padding:14px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:#0f1720;}
-.wrap{max-width:900px;margin:0 auto}
-header{display:flex;flex-direction:column;align-items:center;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px;border-radius:10px;text-align:center;position:relative;}
-header h1{margin:0;font-size:20px} header .sub{font-size:13px;opacity:.95}
-#clock{position:absolute;top:10px;left:10px;font-weight:700}
-.card{background:var(--card);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);border:1px solid rgba(16,24,40,.04);}
-h2{margin:0 0 8px;color:var(--accent)}
-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
-th,td{padding:6px;border-bottom:1px solid #eef3f7;text-align:center;}
-th{background:linear-gradient(180deg,#f7fbff,#f0f6ff);color:var(--accent);font-weight:700}
-button{padding:6px 10px;border-radius:6px;border:0;cursor:pointer;font-size:13px;margin:2px;}
-.btn-blue{background:var(--accent);color:#fff;}
-select,input[type=text]{padding:6px;border-radius:6px;border:1px solid #d7e6f6;background:#fbfeff;font-size:13px;width:100%}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صيدلية د.رامي | نظام الحضور</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+        body { font-family: 'Tajawal', sans-serif; }
+        .timer { font-family: monospace; letter-spacing: 2px; }
+    </style>
 </head>
-<body>
-<div class="wrap">
-<header>
-<h1>⚕️ نظام حضور وانصراف</h1>
-<div class="sub">نسخة كاملة — powred by fady</div>
-<div id="clock"></div>
-</header>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4" id="app">
+        <!-- سيتم تحميل المحتوى هنا -->
+    </div>
 
-<div id="loginCard" class="card">
-<h2>تسجيل الدخول بالدكتور</h2>
-<input type="text" id="doctorCode" placeholder="ضع كود الدكتور">
-<button class="btn-blue" onclick="loginDoctor()">دخول</button>
-</div>
+    <script>
+        // بيانات الأطباء مع الأكواد الجديدة
+        const system = {
+            admins: [
+                {name: "دكتور رامي كميل", code: "RK36", type: "admin"}
+            ],
+            doctors: [
+                {name: "دكتوره روجينا", code: "RA12", shift: {start: 10, end: 18}},
+                {name: "دكتوره مارينا", code: "MH20", shift: {start: 12, end: 20}},
+                {name: "دكتوره كاتي", code: "KK00", shift: {start: 18, end: 3}},
+                {name: "دكتور فادي", code: "FH99", shift: {start: 18, end: 3}},
+                {name: "جرجس هلال", code: "GH78", shift: {start: 14, end: 0}},
+                {name: "يوسف ثروت", code: "YT56", shift: {start: 10, end: 20}},
+                {name: "فادي ميلاد", code: "FM90", shift: {start: 17, end: 3}}
+            ],
+            records: JSON.parse(localStorage.getItem('records')) || []
+        };
 
-<div id="mainContent" style="display:none;">
-<div class="card">
-<h2>أزرار الحضور والانصراف والإجازة</h2>
-<div id="doctorActions"></div>
-</div>
+        // تطبيق النظام
+        const app = {
+            currentDoctor: null,
+            
+            init() {
+                this.renderLogin();
+                this.updateClock();
+                setInterval(() => this.updateClock(), 1000);
+            },
 
-<div class="card" id="absenceCard">
-<h2>جدول الإجازات</h2>
-<table id="absenceTable">
-<thead><tr><th>اليوم</th><th>الاسم</th></tr></thead>
-<tbody></tbody>
-</table>
-</div>
+            renderLogin() {
+                document.getElementById('app').innerHTML = `
+                    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6 mt-10">
+                        <h1 class="text-2xl font-bold text-center text-blue-700 mb-6">
+                            نظام حضور صيدلية د.رامي
+                        </h1>
+                        
+                        <div class="mb-4">
+                            <label class="block mb-2 font-medium">الكود السري:</label>
+                            <input type="password" id="empCode" 
+                                   class="w-full p-3 border rounded-lg" 
+                                   placeholder="أدخل كود الدخول">
+                        </div>
+                        
+                        <button onclick="app.login()" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold">
+                            دخول النظام
+                        </button>
+                        
+                        <div class="mt-4 text-center text-gray-700">
+                            <div id="liveClock" class="text-lg font-bold"></div>
+                        </div>
+                    </div>
+                `;
+            },
 
-<div class="card" id="logCard" style="display:none;">
-<h2>سجل اليوم</h2>
-<table id="logTable">
-<thead><tr><th>الاسم</th><th>نوع</th><th>الوقت</th><th>التاريخ</th><th>الحالة</th><th>السبب</th></tr></thead>
-<tbody></tbody>
-</table>
-</div>
-</div>
+            login() {
+                const code = document.getElementById('empCode').value.trim();
+                if (!code) return alert("يجب إدخال كود الدخول");
+                
+                this.currentDoctor = [...system.admins, ...system.doctors].find(u => u.code === code);
+                
+                if (!this.currentDoctor) {
+                    alert("كود الدخول غير صحيح");
+                    document.getElementById('empCode').value = "";
+                    return;
+                }
+                
+                if (this.currentDoctor.type === "admin") {
+                    this.renderAdminPanel();
+                } else {
+                    this.renderDoctorPanel();
+                }
+            },
 
-<footer>
-تحت إشراف: دكتور رامي كميل
-</footer>
-</div>
+            renderAdminPanel() {
+                document.getElementById('app').innerHTML = `
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h1 class="text-xl font-bold mb-4">لوحة الأدمن</h1>
+                        
+                        <div class="flex gap-2 mb-6">
+                            <button onclick="app.showRecords('today')" class="bg-blue-500 text-white px-4 py-2 rounded">
+                                سجلات اليوم
+                            </button>
+                            <button onclick="app.showRecords('all')" class="bg-green-500 text-white px-4 py-2 rounded">
+                                جميع السجلات
+                            </button>
+                            <button onclick="app.showVacationRequests()" class="bg-yellow-500 text-white px-4 py-2 rounded">
+                                طلبات الإجازة
+                            </button>
+                            <button onclick="app.showAbsences()" class="bg-red-500 text-white px-4 py-2 rounded">
+                                غيابات الشهر
+                            </button>
+                        </div>
+                        
+                        <div id="recordsView" class="border rounded-lg p-3">
+                            <!-- عرض السجلات هنا -->
+                        </div>
+                        
+                        <button onclick="app.renderLogin()" class="mt-4 text-red-500">
+                            تسجيل خروج
+                        </button>
+                    </div>
+                `;
+                this.showRecords('today');
+            },
 
-<script>
-const doctors=[
-{name:"د. روجينا",shiftStart:"10:00 ص",shiftEnd:"6:00 م",code:"RO12"},
-{name:"د. مارينا",shiftStart:"12:00 م",shiftEnd:"8:00 م",code:"MA34"},
-{name:"د. فادي",shiftStart:"6:00 م",shiftEnd:"3:00 ص",code:"FA56"},
-{name:"د. كاتي",shiftStart:"6:00 م",shiftEnd:"3:00 ص",code:"KA78"},
-{name:"فادي ميلاد",shiftStart:"5:00 م",shiftEnd:"3:00 ص",code:"FM90"},
-{name:"جرجس هلال",shiftStart:"2:00 م",shiftEnd:"12:00 ص",code:"GH21"},
-{name:"يوسف ثروت",shiftStart:"10:00 ص",shiftEnd:"8:00 م",code:"YT11"},
-{name:"د. رامي",shiftStart:"",shiftEnd:"",code:"ramy12"}
-];
+            renderDoctorPanel() {
+                document.getElementById('app').innerHTML = `
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h1 class="text-xl font-bold text-blue-700">
+                                ${this.currentDoctor.name}
+                            </h1>
+                            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                                ${this.getShiftTime()}
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <button onclick="app.checkIn()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white py-3 px-2 rounded-lg">
+                                تسجيل حضور
+                            </button>
+                            <button onclick="app.checkOut()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white py-3 px-2 rounded-lg">
+                                تسجيل انصراف
+                            </button>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                            <h3 class="font-bold mb-3">طلب إجازة</h3>
+                            <input type="date" id="vacationDate" class="w-full p-2 border rounded mb-2">
+                            <button onclick="app.requestVacation()" 
+                                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded">
+                                تقديم طلب
+                            </button>
+                        </div>
+                        
+                        <div class="border rounded-lg p-3">
+                            <h4 class="font-bold mb-2">آخر السجلات</h4>
+                            <div id="lastRecords"></div>
+                        </div>
+                        
+                        <button onclick="app.renderLogin()" class="mt-4 text-blue-500">
+                            العودة للرئيسية
+                        </button>
+                    </div>
+                `;
+                this.loadLastRecords();
+            },
 
-let logs=[]; let absences=[]; let currentDoctor=null;
+            getShiftTime() {
+                const shift = this.currentDoctor.shift;
+                const start = shift.start > 12 ? shift.start - 12 + 'PM' : shift.start + 'AM';
+                let end = shift.end > 12 ? shift.end - 12 + 'PM' : shift.end + 'AM';
+                if (shift.end === 0) end = '12AM';
+                return `شيفت ${start} - ${end}`;
+            },
 
-function updateClock(){
-  const now=new Date();
-  const h=now.getHours().toString().padStart(2,'0');
-  const m=now.getMinutes().toString().padStart(2,'0');
-  const s=now.getSeconds().toString().padStart(2,'0');
-  document.getElementById('clock').textContent=`${h}:${m}:${s}`;
-}
-setInterval(updateClock,1000);
+            checkIn() {
+                if (!this.checkShiftTime()) {
+                    alert(`وقت الشيفت يبدأ من ${this.getShiftTime()}`);
+                    return;
+                }
+                
+                const now = new Date();
+                const today = this.formatDate(now);
+                
+                if (system.records.some(r => 
+                    r.name === this.currentDoctor.name && 
+                    r.type === 'حضور' && 
+                    r.date === today
+                )) {
+                    alert('لقد قمت بتسجيل الحضور مسبقاً اليوم');
+                    return;
+                }
+                
+                system.records.push({
+                    name: this.currentDoctor.name,
+                    type: 'حضور',
+                    time: this.formatTime(now),
+                    date: today,
+                    timestamp: Date.now()
+                });
+                
+                localStorage.setItem('records', JSON.stringify(system.records));
+                alert('تم تسجيل الحضور بنجاح');
+                this.loadLastRecords();
+            },
 
-function toMinutes12h(hm){
-  let [time, meridiem]=hm.split(' '); let [h,m]=time.split(':').map(Number);
-  if(meridiem==='م' && h<12) h+=12;
-  if(meridiem==='ص' && h===12) h=0;
-  return h*60+(m||0);
-}
+            checkOut() {
+                const now = new Date();
+                const today = this.formatDate(now);
+                
+                if (!system.records.some(r => 
+                    r.name === this.currentDoctor.name && 
+                    r.type === 'حضور' && 
+                    r.date === today
+                )) {
+                    alert('يجب تسجيل الحضور أولاً قبل الانصراف');
+                    return;
+                }
+                
+                if (system.records.some(r => 
+                    r.name === this.currentDoctor.name && 
+                    r.type === 'انصراف' && 
+                    r.date === today
+                )) {
+                    alert('لقد قمت بتسجيل الانصراف مسبقاً اليوم');
+                    return;
+                }
+                
+                system.records.push({
+                    name: this.currentDoctor.name,
+                    type: 'انصراف',
+                    time: this.formatTime(now),
+                    date: today,
+                    timestamp: Date.now()
+                });
+                
+                localStorage.setItem('records', JSON.stringify(system.records));
+                alert('تم تسجيل الانصراف بنجاح');
+                this.loadLastRecords();
+            },
 
-function saveData(){localStorage.setItem('attendanceData',JSON.stringify({logs,absences}));}
-function loadData(){const saved=localStorage.getItem('attendanceData');if(saved){const obj=JSON.parse(saved);logs=obj.logs||[];absences=obj.absences||[];}}
+            requestVacation() {
+                const date = document.getElementById('vacationDate').value;
+                if (!date) return alert('يجب اختيار تاريخ الإجازة');
+                
+                system.records.push({
+                    name: this.currentDoctor.name,
+                    type: 'إجازة',
+                    date: date,
+                    timestamp: Date.now()
+                });
+                
+                localStorage.setItem('records', JSON.stringify(system.records));
+                alert('تم تقديم طلب الإجازة بنجاح');
+                document.getElementById('vacationDate').value = '';
+            },
 
-loadData();
+            checkShiftTime() {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const shift = this.currentDoctor.shift;
+                
+                if (shift.start > shift.end) {
+                    return currentHour >= shift.start || currentHour < shift.end;
+                } else {
+                    return currentHour >= shift.start && currentHour < shift.end;
+                }
+            },
 
-function loginDoctor(){
-  const code=document.getElementById('doctorCode').value.trim();
-  const doc=doctors.find(d=>d.code===code);
-  if(!doc){alert('كود غير صحيح'); return;}
-  currentDoctor=doc;
-  document.getElementById('loginCard').style.display='none';
-  document.getElementById('mainContent').style.display='block';
-  renderDoctorActions();
-  renderAbsences();
-  if(doc.code==="ramy12") document.getElementById('logCard').style.display='block';
-}
+            loadLastRecords() {
+                const lastRecords = system.records
+                    .filter(r => r.name === this.currentDoctor.name)
+                    .sort((a, b) => b.timestamp - a.timestamp)
+                    .slice(0, 5);
+                
+                let html = lastRecords.map(r => `
+                    <div class="p-2 border-b">
+                        ${r.date} - ${r.time || ''} | ${r.type}
+                    </div>
+                `).join('');
+                
+                document.getElementById('lastRecords').innerHTML = html || 'لا توجد سجلات سابقة';
+            },
 
-function renderDoctorActions(){
-  const container=document.getElementById('doctorActions');
-  container.innerHTML='';
-  const nameDiv=document.createElement('div'); nameDiv.textContent=currentDoctor.name; nameDiv.style.fontSize='18px'; nameDiv.style.fontWeight='700'; container.appendChild(nameDiv);
+            showRecords(type) {
+                const records = type === 'today' ? 
+                    system.records.filter(r => r.date === this.formatDate(new Date())) :
+                    [...system.records].sort((a, b) => b.timestamp - a.timestamp);
+                
+                let html = records.map(r => `
+                    <div class="p-3 border-b flex justify-between">
+                        <div>
+                            <span class="font-bold">${r.name}</span>
+                            <span class="mx-2">|</span>
+                            <span>${r.type}</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            ${r.date} ${r.time || ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('recordsView').innerHTML = html || 'لا توجد سجلات';
+            },
 
-  const btnPresence=document.createElement('button'); btnPresence.className='btn-blue'; btnPresence.textContent='حضور';
-  btnPresence.onclick=()=>markAttendance('حضور'); container.appendChild(btnPresence);
+            showVacationRequests() {
+                const vacationRecords = system.records.filter(r => r.type === 'إجازة');
+                let html = vacationRecords.map(r => `
+                    <div class="p-3 border-b flex justify-between">
+                        <div>
+                            <span class="font-bold">${r.name}</span>
+                            <span class="mx-2">|</span>
+                            <span>إجازة</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            ${r.date}
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('recordsView').innerHTML = html || 'لا توجد طلبات إجازة';
+            },
 
-  const btnExit=document.createElement('button'); btnExit.className='btn-blue'; btnExit.textContent='انصراف';
-  btnExit.onclick=()=>markAttendance('انصراف'); container.appendChild(btnExit);
+            showAbsences() {
+                const currentMonth = new Date().getMonth() + 1; // الأشهر تبدأ من 0
+                const absenceRecords = system.records.filter(r => r.type === 'غياب' && new Date(r.date).getMonth() + 1 === currentMonth);
+                let html = absenceRecords.map(r => `
+                    <div class="p-3 border-b flex justify-between">
+                        <div>
+                            <span class="font-bold">${r.name}</span>
+                            <span class="mx-2">|</span>
+                            <span>غياب</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            ${r.date}
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('recordsView').innerHTML = html || 'لا توجد غيابات لهذا الشهر';
+            },
 
-  const selDay=document.createElement('select'); selDay.id='absenceSelect';
-  selDay.add(new Option('اختر يوم الإجازة',''));
-  ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"].forEach(day=>{
-    selDay.add(new Option(day,day));
-  });
-  selDay.onchange=()=>setAbsence(selDay.value);
-  container.appendChild(selDay);
+            formatDate(date) {
+                const d = new Date(date);
+                const year = d.getFullYear();
+                const month = (d.getMonth() + 1).toString().padStart(2, '0');
+                const day = d.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            },
 
-  // عرض مواعيد الشيفت
-  const shiftDiv=document.createElement('div'); shiftDiv.textContent=`الشيفت: ${currentDoctor.shiftStart} - ${currentDoctor.shiftEnd}`; shiftDiv.style.marginTop='5px'; container.appendChild(shiftDiv);
-}
+            formatTime(date) {
+                const d = new Date(date);
+                let hours = d.getHours();
+                const minutes = d.getMinutes().toString().padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                return `${hours}:${minutes} ${ampm}`;
+            },
 
-function markAttendance(action){
-  const now=new Date(); const todayDate=now.toLocaleDateString('ar-EG');
-  const startMin=toMinutes12h(currentDoctor.shiftStart); const endMin=toMinutes12h(currentDoctor.shiftEnd);
-  let currMin=now.getHours()*60+now.getMinutes();
-  if(endMin<=startMin && currMin<startMin) currMin+=24*60;
+            updateClock() {
+                const now = new Date();
+                const time = this.formatTime(now);
+                if (document.getElementById('liveClock')) {
+                    document.getElementById('liveClock').textContent = time;
+                }
+            }
+        };
 
-  if(action==='حضور'){
-    if(logs.find(l=>l.name===currentDoctor.name && l.action==='حضور' && l.date===todayDate)){alert('لقد سجلت حضورك بالفعل اليوم ✅'); return;}
-    if(currMin<startMin){alert('لا يمكنك تسجيل الحضور قبل بداية الشيفت'); return;}
-    let status='في الميعاد', reason='-';
-    if(currMin>startMin){status='تأخير'; while(!reason){reason=prompt('سبب التأخير:');}}
-    logs.push({name:currentDoctor.name,action,time:`${now.getHours()}:${now.getMinutes()}`,date:todayDate,status,reason});
-  }
-  if(action==='انصراف'){
-    logs.push({name:currentDoctor.name,action,time:`${now.getHours()}:${now.getMinutes()}`,date:todayDate,status:'انصراف',reason:'-'});
-  }
-  saveData();
-  if(currentDoctor.code==="ramy12") renderLogs();
-  alert(`تم تسجيل ${action} بنجاح`);
-}
-
-function setAbsence(day){
-  if(absences.filter(a=>a.day===day).length>=1){alert('هذا اليوم محجوز بالفعل لشخص آخر'); return;}
-  absences.push({name:currentDoctor.name,day}); saveData(); renderAbsences();
-}
-
-function renderLogs(){
-  const tbody=document.querySelector('#logTable tbody');tbody.innerHTML='';
-  logs.forEach(l=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${l.name}</td><td>${l.action}</td><td>${l.time}</td><td>${l.date}</td><td>${l.status}</td><td>${l.reason}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function renderAbsences(){
-  const tbody=document.querySelector('#absenceTable tbody');tbody.innerHTML='';
-  absences.forEach(a=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${a.day}</td><td>${a.name}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-</script>
+        // بدء النظام
+        app.init();
+    </script>
 </body>
 </html>
