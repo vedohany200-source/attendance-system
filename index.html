@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- تضمين مكتبة jsPDF لإنشاء ملفات PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.14/jspdf.plugin.autotable.min.js"></script>
     <style>
         /* الخط المستخدم في التصميم */
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
@@ -490,7 +491,6 @@
     checkOutButton.addEventListener('click', async () => {
         if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
         showLoading(checkOutButton, true);
-        showAttendanceMessage('جارٍ تسجيل الإنصراف...', 'info');
 
         const today = new Date().toLocaleDateString('en-US');
         
@@ -549,10 +549,12 @@
         }
     });
 
-    // وظيفة إعداد المستمع الفوري لسجلات الحضور (جديد)
+    // وظيفة إعداد المستمع الفوري لسجلات الحضور
     function setupAttendanceListener() {
         const q = collection(db, "attendanceRecords");
+        // onSnapshot listens for real-time updates and fires whenever the data changes.
         onSnapshot(q, (querySnapshot) => {
+            console.log("Real-time attendance update received from Firestore.");
             attendanceList.innerHTML = ''; // مسح القائمة الحالية
             querySnapshot.forEach((doc) => {
                 const record = doc.data();
@@ -578,10 +580,12 @@
         });
     }
 
-    // وظيفة إعداد المستمع الفوري لسجلات الإجازات (جديد)
+    // وظيفة إعداد المستمع الفوري لسجلات الإجازات
     function setupVacationListener() {
         const q = collection(db, "vacationRecords");
+        // onSnapshot listens for real-time updates and fires whenever the data changes.
         onSnapshot(q, (querySnapshot) => {
+            console.log("Real-time vacation update received from Firestore.");
             vacationList.innerHTML = ''; // مسح القائمة الحالية
             querySnapshot.forEach((doc) => {
                 const record = doc.data();
@@ -605,7 +609,7 @@
         });
     }
 
-    // وظيفة إرفاق مستمعي الأحداث لأزرار الحذف (تم تحديثها)
+    // وظيفة إرفاق مستمعي الأحداث لأزرار الحذف
     function attachDeleteListeners() {
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.removeEventListener('click', handleDelete); // إزالة المستمعين القدامى لتجنب التكرار
@@ -613,7 +617,7 @@
         });
     }
     
-    // وظيفة معالجة الحذف (جديد)
+    // وظيفة معالجة الحذف
     async function handleDelete(e) {
         const recordId = e.currentTarget.getAttribute('data-id');
         const recordType = e.currentTarget.getAttribute('data-type');
@@ -630,7 +634,7 @@
         });
     }
 
-    // وظيفة إعداد المستمع الفوري للرسائل الجديدة (جديد)
+    // وظيفة إعداد المستمع الفوري للرسائل الجديدة
     function setupAnnouncementListener() {
         const docRef = doc(db, "announcements", "current");
         onSnapshot(docRef, (doc) => {
@@ -646,7 +650,7 @@
         });
     }
 
-    // وظيفة إرسال الرسالة من المدير (جديد)
+    // وظيفة إرسال الرسالة من المدير
     sendAnnouncementButton.addEventListener('click', async () => {
         if (!db) { showLoginMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
         const message = announcementInput.value.trim();
@@ -669,7 +673,7 @@
         }
     });
     
-    // وظيفة توليد تقرير PDF (جديد)
+    // وظيفة توليد تقرير PDF
     generatePdfButton.addEventListener('click', async () => {
         if (!db) {
             showLoginMessage('لا يمكن الاتصال بالخدمة.', 'error');
