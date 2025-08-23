@@ -1,376 +1,771 @@
-
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>صيدلية د.رامي | نظام الحضور</title>
+    <!-- تضمين Tailwind CSS و Font Awesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- تضمين مكتبة jsPDF لإنشاء ملفات PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* الخط المستخدم في التصميم */
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
         body { font-family: 'Tajawal', sans-serif; }
-        .timer { font-family: monospace; letter-spacing: 2px; }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto p-4" id="app">
-        <!-- سيتم تحميل المحتوى هنا -->
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+<div class="container mx-auto p-4 max-w-2xl bg-white rounded-xl shadow-lg border-t-4 border-teal-500">
+    <h1 class="text-4xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center">
+        <i class="fas fa-prescription-bottle-alt text-teal-500 mr-3"></i>
+        صيدلية د.رامي
+    </h1>
+    <p class="text-center text-gray-600 text-lg mb-8">نظام تسجيل الحضور والإنصراف</p>
+
+    <!-- واجهة تسجيل الدخول -->
+    <div id="login-container" class="space-y-4">
+        <div class="flex items-center border-2 border-gray-300 rounded-xl overflow-hidden shadow-sm">
+            <span class="p-3 bg-gray-200 text-gray-500">
+                <i class="fas fa-user-circle"></i>
+            </span>
+            <input id="employee-id-input" type="text" placeholder="أدخل رقم التعريف الخاص بك" class="flex-grow p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-r-lg">
+        </div>
+        <button id="login-button" class="w-full bg-teal-500 text-white p-3 rounded-xl font-bold hover:bg-teal-600 transition duration-300 shadow-md">تسجيل الدخول</button>
+        <div id="login-message" class="text-center text-sm font-medium mt-2"></div>
     </div>
 
-    <script>
-        // بيانات الأطباء مع الأكواد الجديدة
-        const system = {
-            admins: [
-                {name: "دكتور رامي كميل", code: "RK36", type: "admin"}
-            ],
-            doctors: [
-                {name: "دكتوره روجينا", code: "RA12", shift: {start: 10, end: 18}},
-                {name: "دكتوره مارينا", code: "MH20", shift: {start: 12, end: 20}},
-                {name: "دكتوره كاتي", code: "KK00", shift: {start: 18, end: 3}},
-                {name: "دكتور فادي", code: "FH99", shift: {start: 18, end: 3}},
-                {name: "جرجس هلال", code: "GH78", shift: {start: 14, end: 0}},
-                {name: "يوسف ثروت", code: "YT56", shift: {start: 10, end: 20}},
-                {name: "فادي ميلاد", code: "FM90", shift: {start: 17, end: 3}}
-            ],
-            records: JSON.parse(localStorage.getItem('records')) || []
+    <!-- واجهة الموظف (مخفية في البداية) -->
+    <div id="employee-container" class="space-y-6 hidden">
+        <div class="text-center">
+            <h2 id="welcome-message" class="text-2xl font-semibold text-gray-700">مرحباً،</h2>
+            <p id="current-date" class="text-gray-500 mt-1"></p>
+            <!-- عنصر الساعة الجديدة -->
+            <p id="current-time" class="text-xl font-bold text-gray-700 mt-2"></p>
+        </div>
+
+        <!-- قسم الرسائل من المدير -->
+        <div id="announcement-container" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg hidden" role="alert">
+            <p class="font-bold">رسالة من المدير:</p>
+            <p id="announcement-text" class="mt-1"></p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4">
+            <button id="check-in-button" class="flex-1 bg-green-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-green-600 transition duration-300 shadow-md flex items-center justify-center">
+                <span class="loading-spinner hidden"></span>
+                <span class="button-text"><i class="fas fa-sign-in-alt mr-2"></i>تسجيل الحضور</span>
+            </button>
+            <button id="check-out-button" class="flex-1 bg-red-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-red-600 transition duration-300 shadow-md flex items-center justify-center">
+                <span class="loading-spinner hidden"></span>
+                <span class="button-text"><i class="fas fa-sign-out-alt mr-2"></i>تسجيل الإنصراف</span>
+            </button>
+        </div>
+        
+        <!-- حقل اختيار تاريخ الإجازة -->
+        <div class="flex flex-col items-center">
+            <label for="vacation-date-input" class="text-gray-600 font-semibold mb-2">اختر تاريخ الإجازة:</label>
+            <input type="date" id="vacation-date-input" class="p-3 border-2 border-gray-300 rounded-xl w-full text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <!-- زر تسجيل الإجازات الجديد -->
+        <button id="vacation-button" class="w-full bg-blue-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-600 transition duration-300 shadow-md mt-4 flex items-center justify-center">
+            <span class="loading-spinner hidden"></span>
+            <span class="button-text"><i class="fas fa-suitcase-rolling mr-2"></i>تسجيل إجازة</span>
+        </button>
+
+        <div id="attendance-message" class="text-center text-sm font-medium mt-2 p-3 bg-gray-100 rounded-lg hidden"></div>
+        
+        <button id="logout-button" class="w-full bg-gray-300 text-gray-800 p-3 rounded-xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
+            تسجيل الخروج
+        </button>
+    </div>
+
+    <!-- واجهة الأدمن (مخفية في البداية) -->
+    <div id="admin-container" class="space-y-6 hidden">
+        <div class="text-center">
+            <h2 class="text-2xl font-semibold text-gray-700">مرحباً، يا مدير</h2>
+            <p class="text-gray-500 mt-1">سجل الحضور والإنصراف</p>
+        </div>
+
+        <!-- قسم الرسائل للموظفين -->
+        <div class="space-y-4">
+            <input id="announcement-input" type="text" placeholder="أكتب رسالة للموظفين" class="w-full p-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button id="send-announcement-button" class="w-full bg-blue-500 text-white p-3 rounded-xl font-bold hover:bg-blue-600 transition duration-300 shadow-md">
+                إرسال رسالة
+            </button>
+        </div>
+
+        <!-- زر توليد التقرير -->
+        <button id="generate-pdf-button" class="w-full bg-purple-600 text-white p-3 rounded-xl font-bold hover:bg-purple-700 transition duration-300 shadow-md flex items-center justify-center">
+            <i class="fas fa-file-pdf mr-2"></i>
+            توليد تقرير أسبوعي (PDF)
+        </button>
+
+        <div class="overflow-x-auto bg-gray-50 rounded-lg p-2 shadow-inner max-h-96">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الاسم</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">التاريخ</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">وقت الحضور</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">وقت الإنصراف</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="attendance-list" class="bg-white divide-y divide-gray-200">
+                    <!-- سيتم إضافة سجلات الحضور هنا بواسطة JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- قسم سجلات الإجازات الجديد -->
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">سجل الإجازات</h3>
+            <div class="overflow-x-auto bg-gray-50 rounded-lg p-2 shadow-inner max-h-96">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الاسم</th>
+                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">التاريخ</th>
+                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vacation-list" class="bg-white divide-y divide-gray-200">
+                        <!-- سيتم إضافة سجلات الإجازات هنا بواسطة JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button id="admin-logout-button" class="w-full bg-gray-300 text-gray-800 p-3 rounded-xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
+            تسجيل الخروج
+        </button>
+    </div>
+</div>
+
+<!-- Modal for confirmation messages -->
+<div id="modal-container" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 id="modal-title" class="text-lg leading-6 font-medium text-gray-900"></h3>
+            <div class="mt-2 px-7 py-3">
+                <p id="modal-body" class="text-sm text-gray-500"></p>
+            </div>
+            <div class="items-center px-4 py-3">
+                <button id="modal-confirm" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    تأكيد
+                </button>
+                <button id="modal-cancel" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-24 shadow-sm ml-2 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, where, query, limit, doc, deleteDoc, updateDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCf6jA09bake9fTWb62mKAn9PVbqcJFx8M",
+      authDomain: "pharmacy-55afd.firebaseapp.com",
+      databaseURL: "https://pharmacy-55afd-default-rtdb.firebaseio.com",
+      projectId: "pharmacy-55afd",
+      storageBucket: "pharmacy-55afd.firebaseapp.com",
+      messagingSenderId: "928414174576",
+      appId: "1:928414174576:web:3c5808dab3fa1c87acd3b5"
+    };
+
+    // Initialize Firebase
+    let app, db;
+    try {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        console.log("Firebase initialized successfully.");
+    } catch (e) {
+        console.error("Firebase initialization failed:", e);
+        showLoginMessage('خطأ في الاتصال بالخدمة. يرجى المحاولة لاحقًا.', 'error');
+    }
+
+    // الوصول إلى عناصر HTML
+    const loginContainer = document.getElementById('login-container');
+    const employeeContainer = document.getElementById('employee-container');
+    const adminContainer = document.getElementById('admin-container');
+    const employeeIdInput = document.getElementById('employee-id-input');
+    const loginButton = document.getElementById('login-button');
+    const logoutButton = document.getElementById('logout-button');
+    const adminLogoutButton = document.getElementById('admin-logout-button');
+    const checkInButton = document.getElementById('check-in-button');
+    const checkOutButton = document.getElementById('check-out-button');
+    const vacationButton = document.getElementById('vacation-button');
+    const vacationDateInput = document.getElementById('vacation-date-input');
+    const attendanceMessage = document.getElementById('attendance-message');
+    const attendanceList = document.getElementById('attendance-list');
+    const vacationList = document.getElementById('vacation-list');
+    const welcomeMessage = document.getElementById('welcome-message');
+    const currentDateElement = document.getElementById('current-date');
+    const currentTimeElement = document.getElementById('current-time');
+    const loginMessage = document.getElementById('login-message');
+    const generatePdfButton = document.getElementById('generate-pdf-button');
+    
+    // عناصر الرسائل الجديدة
+    const announcementContainer = document.getElementById('announcement-container');
+    const announcementText = document.getElementById('announcement-text');
+    const announcementInput = document.getElementById('announcement-input');
+    const sendAnnouncementButton = document.getElementById('send-announcement-button');
+
+    // Modal elements
+    const modalContainer = document.getElementById('modal-container');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const modalCancel = document.getElementById('modal-cancel');
+
+    // قائمة الموظفين والأدمن
+    const employees = [
+        { id: 'RA12', name: 'دكتوره روجينا' },
+        { id: 'KK00', name: 'دكتوره كاتي' },
+        { id: 'FH12', name: 'دكتور فادي' },
+        { id: 'FM90', name: 'فادي عماد' },
+        { id: 'YT56', name: 'يوسف ثروت' },
+        { id: 'GH78', name: 'جرجس هلال' },
+        { id: 'MH20', name: 'مارينا هاني' }
+    ];
+    const adminId = 'RK36';
+
+    let loggedInUser = null;
+
+    // موقع الصيدلية وقطر دائرة الأمان
+    const PHARMACY_LOCATION = { latitude: 30.0444, longitude: 31.2357 }; // مثال: إحداثيات القاهرة
+    const SAFE_RADIUS_METERS = 100; // 100 متر
+
+    // دالة لحساب المسافة بين نقطتين جغرافيتين (Haversine formula)
+    function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // نصف قطر الأرض بالمتر
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
+
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        const distance = R * c; // المسافة بالمتر
+        return distance;
+    }
+
+    // عرض التاريخ الحالي
+    function displayCurrentDate() {
+        const date = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        currentDateElement.textContent = date.toLocaleDateString('ar-EG', options);
+    }
+    
+    // عرض الساعة الحالية وتحديثها كل ثانية
+    function displayCurrentTime() {
+        const time = new Date();
+        const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        currentTimeElement.textContent = time.toLocaleTimeString('ar-EG', options);
+    }
+
+    displayCurrentDate();
+    displayCurrentTime(); // عرض الوقت فورًا
+    setInterval(displayCurrentTime, 1000); // تحديث الوقت كل ثانية
+
+    // Show a custom confirmation modal
+    function showConfirmationModal(title, message, onConfirm) {
+        modalTitle.textContent = title;
+        modalBody.textContent = message;
+        modalContainer.classList.remove('hidden');
+        modalConfirm.onclick = () => {
+            modalContainer.classList.add('hidden');
+            onConfirm(true);
         };
+        modalCancel.onclick = () => {
+            modalContainer.classList.add('hidden');
+            onConfirm(false);
+        };
+    }
 
-        // تطبيق النظام
-        const app = {
-            currentDoctor: null,
+    // وظيفة تسجيل الدخول
+    loginButton.addEventListener('click', () => {
+        if (!db) {
+            showLoginMessage('لا يمكن الاتصال بالخدمة. يرجى المحاولة لاحقًا.', 'error');
+            return;
+        }
+        const employeeId = employeeIdInput.value.trim().toUpperCase();
+        if (employeeId === '') {
+            showLoginMessage('الرجاء إدخال رقم التعريف.', 'error');
+            return;
+        }
+        if (employeeId === adminId) {
+            loggedInUser = { id: adminId, name: 'المدير' };
+            showAdminView();
+        } else {
+            const employee = employees.find(emp => emp.id.toUpperCase() === employeeId);
+            if (employee) {
+                loggedInUser = employee;
+                showEmployeeView();
+            } else {
+                showLoginMessage('رقم تعريف غير صحيح. حاول مرة أخرى.', 'error');
+            }
+        }
+    });
+
+    // وظيفة تسجيل الخروج
+    function logout() {
+        loggedInUser = null;
+        employeeIdInput.value = '';
+        loginContainer.classList.remove('hidden');
+        employeeContainer.classList.add('hidden');
+        adminContainer.classList.add('hidden');
+        hideAttendanceMessage();
+        hideLoginMessage();
+    }
+    logoutButton.addEventListener('click', logout);
+    adminLogoutButton.addEventListener('click', logout);
+
+    // عرض واجهة الموظف
+    function showEmployeeView() {
+        loginContainer.classList.add('hidden');
+        employeeContainer.classList.remove('hidden');
+        welcomeMessage.textContent = `مرحباً، ${loggedInUser.name}`;
+        setupAnnouncementListener(); // إعداد المستمع للرسائل
+    }
+
+    // عرض واجهة الأدمن
+    function showAdminView() {
+        loginContainer.classList.add('hidden');
+        adminContainer.classList.remove('hidden');
+        // استخدام onSnapshot للحصول على تحديثات فورية
+        setupAttendanceListener();
+        setupVacationListener();
+    }
+
+    // وظيفة عرض رسائل الحضور
+    function showAttendanceMessage(message, type) {
+        attendanceMessage.textContent = message;
+        attendanceMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
+        if (type === 'success') {
+            attendanceMessage.classList.add('text-green-500');
+        } else if (type === 'error') {
+            attendanceMessage.classList.add('text-red-500');
+        } else {
+            attendanceMessage.classList.add('text-yellow-500');
+        }
+        setTimeout(() => hideAttendanceMessage(), 5000);
+    }
+
+    // إخفاء رسالة الحضور
+    function hideAttendanceMessage() {
+        attendanceMessage.classList.add('hidden');
+    }
+
+    // عرض رسالة تسجيل الدخول
+    function showLoginMessage(message, type) {
+        loginMessage.textContent = message;
+        loginMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
+        if (type === 'success') {
+            loginMessage.classList.add('text-green-500');
+        } else if (type === 'error') {
+            loginMessage.classList.add('text-red-500');
+        } else {
+            loginMessage.classList.add('text-yellow-500');
+        }
+        setTimeout(() => hideLoginMessage(), 5000);
+    }
+
+    // إخفاء رسالة تسجيل الدخول
+    function hideLoginMessage() {
+        loginMessage.classList.add('hidden');
+    }
+
+    // وظيفة لعرض أو إخفاء مؤشر التحميل
+    function showLoading(button, isLoading) {
+        const spinner = button.querySelector('.loading-spinner');
+        const text = button.querySelector('.button-text');
+        if (isLoading) {
+            spinner.classList.remove('hidden');
+            text.classList.add('hidden');
+            button.disabled = true;
+        } else {
+            spinner.classList.add('hidden');
+            text.classList.remove('hidden');
+            button.disabled = false;
+        }
+    }
+
+    // وظيفة تسجيل الحضور (تم تحديثها)
+    checkInButton.addEventListener('click', async () => {
+        if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+
+        // التحقق من أن الوقت الحالي هو بعد الساعة 10 صباحًا
+        const now = new Date();
+        const currentHour = now.getHours();
+        if (currentHour < 10) {
+            showAttendanceMessage('التسجيل متاح فقط بعد الساعة 10:00 صباحاً.', 'error');
+            return;
+        }
+
+        showLoading(checkInButton, true);
+        showAttendanceMessage('جارٍ التحقق من موقعك وتسجيل الحضور...', 'info');
+
+        // الحصول على الموقع الجغرافي للمستخدم
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const userLocation = position.coords;
+            const distance = getDistance(
+                PHARMACY_LOCATION.latitude,
+                PHARMACY_LOCATION.longitude,
+                userLocation.latitude,
+                userLocation.longitude
+            );
+
+            // التحقق من أن المستخدم داخل نطاق الصيدلية
+            if (distance <= SAFE_RADIUS_METERS) {
+                const today = new Date().toLocaleDateString('en-US');
+                const attendanceRecord = {
+                    employeeId: loggedInUser.id,
+                    employeeName: loggedInUser.name,
+                    date: today,
+                    checkIn: new Date().toLocaleTimeString('ar-EG'),
+                    checkOut: null
+                };
+                
+                try {
+                    const q = query(collection(db, "attendanceRecords"), where("employeeId", "==", loggedInUser.id), where("date", "==", today));
+                    const querySnapshot = await getDocs(q);
+                    
+                    if (querySnapshot.empty) {
+                        await addDoc(collection(db, "attendanceRecords"), attendanceRecord);
+                        showAttendanceMessage('تم تسجيل حضورك بنجاح!', 'success');
+                    } else {
+                        showAttendanceMessage('تم تسجيل حضورك بالفعل اليوم.', 'error');
+                    }
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                    showAttendanceMessage('حدث خطأ أثناء تسجيل الحضور.', 'error');
+                } finally {
+                    showLoading(checkInButton, false);
+                }
+            } else {
+                showAttendanceMessage(`لا يمكنك تسجيل الحضور من هذا الموقع. المسافة ${Math.round(distance)} متر من الصيدلية.`, 'error');
+                showLoading(checkInButton, false);
+            }
+        }, (error) => {
+            console.error("Geolocation error: ", error);
+            let errorMessage = 'تعذر الحصول على موقعك. تأكد من تفعيل خدمة الموقع.';
+            if (error.code === error.PERMISSION_DENIED) {
+                errorMessage = 'الرجاء السماح بالوصول إلى موقعك لتسجيل الحضور.';
+            }
+            showAttendanceMessage(errorMessage, 'error');
+            showLoading(checkInButton, false);
+        });
+    });
+
+    // وظيفة تسجيل الإنصراف
+    checkOutButton.addEventListener('click', async () => {
+        if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        showLoading(checkOutButton, true);
+        showAttendanceMessage('جارٍ تسجيل الإنصراف...', 'info');
+
+        const today = new Date().toLocaleDateString('en-US');
+        
+        try {
+            const q = query(collection(db, "attendanceRecords"), where("employeeId", "==", loggedInUser.id), where("date", "==", today), limit(1));
+            const querySnapshot = await getDocs(q);
             
-            init() {
-                this.renderLogin();
-                this.updateClock();
-                setInterval(() => this.updateClock(), 1000);
-            },
+            if (!querySnapshot.empty) {
+                const docRef = doc(db, "attendanceRecords", querySnapshot.docs[0].id);
+                const data = querySnapshot.docs[0].data();
+                if (data.checkOut) {
+                    showAttendanceMessage('تم تسجيل انصرافك بالفعل اليوم.', 'error');
+                    return;
+                }
+                await updateDoc(docRef, { checkOut: new Date().toLocaleTimeString('ar-EG') });
+                showAttendanceMessage('تم تسجيل انصرافك بنجاح!', 'success');
+            } else {
+                showAttendanceMessage('يجب عليك تسجيل الحضور أولاً.', 'error');
+            }
+        } catch (e) {
+            console.error("Error updating document: ", e);
+            showAttendanceMessage('حدث خطأ أثناء تسجيل الإنصراف.', 'error');
+        } finally {
+            showLoading(checkOutButton, false);
+        }
+    });
 
-            renderLogin() {
-                document.getElementById('app').innerHTML = `
-                    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6 mt-10">
-                        <h1 class="text-2xl font-bold text-center text-blue-700 mb-6">
-                            نظام حضور صيدلية د.رامي
-                        </h1>
-                        
-                        <div class="mb-4">
-                            <label class="block mb-2 font-medium">الكود السري:</label>
-                            <input type="password" id="empCode" 
-                                   class="w-full p-3 border rounded-lg" 
-                                   placeholder="أدخل كود الدخول">
-                        </div>
-                        
-                        <button onclick="app.login()" 
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold">
-                            دخول النظام
+    // وظيفة تسجيل الإجازة
+    vacationButton.addEventListener('click', async () => {
+        if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        showLoading(vacationButton, true);
+        const vacationDate = vacationDateInput.value;
+        if (!vacationDate) {
+            showAttendanceMessage('الرجاء اختيار تاريخ الإجازة أولاً.', 'error');
+            showLoading(vacationButton, false);
+            return;
+        }
+        
+        showAttendanceMessage('جارٍ تسجيل الإجازة...', 'info');
+
+        const vacationRecord = {
+            employeeId: loggedInUser.id,
+            employeeName: loggedInUser.name,
+            date: vacationDate,
+            status: 'مسجلة'
+        };
+        try {
+            await addDoc(collection(db, "vacationRecords"), vacationRecord);
+            showAttendanceMessage('تم تسجيل إجازتك بنجاح!', 'success');
+            vacationDateInput.value = '';
+        } catch (e) {
+            console.error("Error adding vacation document: ", e);
+            showAttendanceMessage('حدث خطأ أثناء تسجيل الإجازة.', 'error');
+        } finally {
+            showLoading(vacationButton, false);
+        }
+    });
+
+    // وظيفة إعداد المستمع الفوري لسجلات الحضور (جديد)
+    function setupAttendanceListener() {
+        const q = collection(db, "attendanceRecords");
+        onSnapshot(q, (querySnapshot) => {
+            attendanceList.innerHTML = ''; // مسح القائمة الحالية
+            querySnapshot.forEach((doc) => {
+                const record = doc.data();
+                const recordId = doc.id;
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-100 transition-colors duration-200';
+                row.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${record.employeeName}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.date}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.checkIn || '-'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.checkOut || '-'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-right">
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${recordId}" data-type="attendance">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
-                        
-                        <div class="mt-4 text-center text-gray-700">
-                            <div id="liveClock" class="text-lg font-bold"></div>
-                        </div>
-                    </div>
+                    </td>
                 `;
-            },
+                attendanceList.appendChild(row);
+            });
+            attachDeleteListeners();
+        }, (error) => {
+            console.error("Error fetching attendance documents: ", error);
+        });
+    }
 
-            login() {
-                const code = document.getElementById('empCode').value.trim();
-                if (!code) return alert("يجب إدخال كود الدخول");
-                
-                this.currentDoctor = [...system.admins, ...system.doctors].find(u => u.code === code);
-                
-                if (!this.currentDoctor) {
-                    alert("كود الدخول غير صحيح");
-                    document.getElementById('empCode').value = "";
-                    return;
-                }
-                
-                if (this.currentDoctor.type === "admin") {
-                    this.renderAdminPanel();
-                } else {
-                    this.renderDoctorPanel();
-                }
-            },
-
-            renderAdminPanel() {
-                document.getElementById('app').innerHTML = `
-                    <div class="bg-white rounded-lg shadow-lg p-6">
-                        <h1 class="text-xl font-bold mb-4">لوحة الأدمن</h1>
-                        
-                        <div class="flex gap-2 mb-6">
-                            <button onclick="app.showRecords('today')" class="bg-blue-500 text-white px-4 py-2 rounded">
-                                سجلات اليوم
-                            </button>
-                            <button onclick="app.showRecords('all')" class="bg-green-500 text-white px-4 py-2 rounded">
-                                جميع السجلات
-                            </button>
-                            <button onclick="app.showVacationRequests()" class="bg-yellow-500 text-white px-4 py-2 rounded">
-                                طلبات الإجازة
-                            </button>
-                            <button onclick="app.showAbsences()" class="bg-red-500 text-white px-4 py-2 rounded">
-                                غيابات الشهر
-                            </button>
-                        </div>
-                        
-                        <div id="recordsView" class="border rounded-lg p-3">
-                            <!-- عرض السجلات هنا -->
-                        </div>
-                        
-                        <button onclick="app.renderLogin()" class="mt-4 text-red-500">
-                            تسجيل خروج
+    // وظيفة إعداد المستمع الفوري لسجلات الإجازات (جديد)
+    function setupVacationListener() {
+        const q = collection(db, "vacationRecords");
+        onSnapshot(q, (querySnapshot) => {
+            vacationList.innerHTML = ''; // مسح القائمة الحالية
+            querySnapshot.forEach((doc) => {
+                const record = doc.data();
+                const recordId = doc.id;
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-100 transition-colors duration-200';
+                row.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${record.employeeName}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.date}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-right">
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${recordId}" data-type="vacation">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
-                    </div>
+                    </td>
                 `;
-                this.showRecords('today');
-            },
+                vacationList.appendChild(row);
+            });
+            attachDeleteListeners();
+        }, (error) => {
+            console.error("Error fetching vacation documents: ", error);
+        });
+    }
 
-            renderDoctorPanel() {
-                document.getElementById('app').innerHTML = `
-                    <div class="bg-white rounded-lg shadow-lg p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h1 class="text-xl font-bold text-blue-700">
-                                ${this.currentDoctor.name}
-                            </h1>
-                            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                                ${this.getShiftTime()}
-                            </span>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4 mb-6">
-                            <button onclick="app.checkIn()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white py-3 px-2 rounded-lg">
-                                تسجيل حضور
-                            </button>
-                            <button onclick="app.checkOut()" 
-                                    class="bg-red-500 hover:bg-red-600 text-white py-3 px-2 rounded-lg">
-                                تسجيل انصراف
-                            </button>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-4 rounded-lg mb-6">
-                            <h3 class="font-bold mb-3">طلب إجازة</h3>
-                            <input type="date" id="vacationDate" class="w-full p-2 border rounded mb-2">
-                            <button onclick="app.requestVacation()" 
-                                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded">
-                                تقديم طلب
-                            </button>
-                        </div>
-                        
-                        <div class="border rounded-lg p-3">
-                            <h4 class="font-bold mb-2">آخر السجلات</h4>
-                            <div id="lastRecords"></div>
-                        </div>
-                        
-                        <button onclick="app.renderLogin()" class="mt-4 text-blue-500">
-                            العودة للرئيسية
-                        </button>
-                    </div>
-                `;
-                this.loadLastRecords();
-            },
+    // وظيفة إرفاق مستمعي الأحداث لأزرار الحذف (تم تحديثها)
+    function attachDeleteListeners() {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.removeEventListener('click', handleDelete); // إزالة المستمعين القدامى لتجنب التكرار
+            btn.addEventListener('click', handleDelete);
+        });
+    }
+    
+    // وظيفة معالجة الحذف (جديد)
+    async function handleDelete(e) {
+        const recordId = e.currentTarget.getAttribute('data-id');
+        const recordType = e.currentTarget.getAttribute('data-type');
+        const collectionName = recordType === 'attendance' ? 'attendanceRecords' : 'vacationRecords';
 
-            getShiftTime() {
-                const shift = this.currentDoctor.shift;
-                const start = shift.start > 12 ? shift.start - 12 + 'PM' : shift.start + 'AM';
-                let end = shift.end > 12 ? shift.end - 12 + 'PM' : shift.end + 'AM';
-                if (shift.end === 0) end = '12AM';
-                return `شيفت ${start} - ${end}`;
-            },
-
-            checkIn() {
-                if (!this.checkShiftTime()) {
-                    alert(`وقت الشيفت يبدأ من ${this.getShiftTime()}`);
-                    return;
-                }
-                
-                const now = new Date();
-                const today = this.formatDate(now);
-                
-                if (system.records.some(r => 
-                    r.name === this.currentDoctor.name && 
-                    r.type === 'حضور' && 
-                    r.date === today
-                )) {
-                    alert('لقد قمت بتسجيل الحضور مسبقاً اليوم');
-                    return;
-                }
-                
-                system.records.push({
-                    name: this.currentDoctor.name,
-                    type: 'حضور',
-                    time: this.formatTime(now),
-                    date: today,
-                    timestamp: Date.now()
-                });
-                
-                localStorage.setItem('records', JSON.stringify(system.records));
-                alert('تم تسجيل الحضور بنجاح');
-                this.loadLastRecords();
-            },
-
-            checkOut() {
-                const now = new Date();
-                const today = this.formatDate(now);
-                
-                if (!system.records.some(r => 
-                    r.name === this.currentDoctor.name && 
-                    r.type === 'حضور' && 
-                    r.date === today
-                )) {
-                    alert('يجب تسجيل الحضور أولاً قبل الانصراف');
-                    return;
-                }
-                
-                if (system.records.some(r => 
-                    r.name === this.currentDoctor.name && 
-                    r.type === 'انصراف' && 
-                    r.date === today
-                )) {
-                    alert('لقد قمت بتسجيل الانصراف مسبقاً اليوم');
-                    return;
-                }
-                
-                system.records.push({
-                    name: this.currentDoctor.name,
-                    type: 'انصراف',
-                    time: this.formatTime(now),
-                    date: today,
-                    timestamp: Date.now()
-                });
-                
-                localStorage.setItem('records', JSON.stringify(system.records));
-                alert('تم تسجيل الانصراف بنجاح');
-                this.loadLastRecords();
-            },
-
-            requestVacation() {
-                const date = document.getElementById('vacationDate').value;
-                if (!date) return alert('يجب اختيار تاريخ الإجازة');
-                
-                system.records.push({
-                    name: this.currentDoctor.name,
-                    type: 'إجازة',
-                    date: date,
-                    timestamp: Date.now()
-                });
-                
-                localStorage.setItem('records', JSON.stringify(system.records));
-                alert('تم تقديم طلب الإجازة بنجاح');
-                document.getElementById('vacationDate').value = '';
-            },
-
-            checkShiftTime() {
-                const now = new Date();
-                const currentHour = now.getHours();
-                const shift = this.currentDoctor.shift;
-                
-                if (shift.start > shift.end) {
-                    return currentHour >= shift.start || currentHour < shift.end;
-                } else {
-                    return currentHour >= shift.start && currentHour < shift.end;
-                }
-            },
-
-            loadLastRecords() {
-                const lastRecords = system.records
-                    .filter(r => r.name === this.currentDoctor.name)
-                    .sort((a, b) => b.timestamp - a.timestamp)
-                    .slice(0, 5);
-                
-                let html = lastRecords.map(r => `
-                    <div class="p-2 border-b">
-                        ${r.date} - ${r.time || ''} | ${r.type}
-                    </div>
-                `).join('');
-                
-                document.getElementById('lastRecords').innerHTML = html || 'لا توجد سجلات سابقة';
-            },
-
-            showRecords(type) {
-                const records = type === 'today' ? 
-                    system.records.filter(r => r.date === this.formatDate(new Date())) :
-                    [...system.records].sort((a, b) => b.timestamp - a.timestamp);
-                
-                let html = records.map(r => `
-                    <div class="p-3 border-b flex justify-between">
-                        <div>
-                            <span class="font-bold">${r.name}</span>
-                            <span class="mx-2">|</span>
-                            <span>${r.type}</span>
-                        </div>
-                        <div class="text-sm text-gray-600">
-                            ${r.date} ${r.time || ''}
-                        </div>
-                    </div>
-                `).join('');
-                
-                document.getElementById('recordsView').innerHTML = html || 'لا توجد سجلات';
-            },
-
-            showVacationRequests() {
-                const vacationRecords = system.records.filter(r => r.type === 'إجازة');
-                let html = vacationRecords.map(r => `
-                    <div class="p-3 border-b flex justify-between">
-                        <div>
-                            <span class="font-bold">${r.name}</span>
-                            <span class="mx-2">|</span>
-                            <span>إجازة</span>
-                        </div>
-                        <div class="text-sm text-gray-600">
-                            ${r.date}
-                        </div>
-                    </div>
-                `).join('');
-                
-                document.getElementById('recordsView').innerHTML = html || 'لا توجد طلبات إجازة';
-            },
-
-            showAbsences() {
-                const currentMonth = new Date().getMonth() + 1; // الأشهر تبدأ من 0
-                const absenceRecords = system.records.filter(r => r.type === 'غياب' && new Date(r.date).getMonth() + 1 === currentMonth);
-                let html = absenceRecords.map(r => `
-                    <div class="p-3 border-b flex justify-between">
-                        <div>
-                            <span class="font-bold">${r.name}</span>
-                            <span class="mx-2">|</span>
-                            <span>غياب</span>
-                        </div>
-                        <div class="text-sm text-gray-600">
-                            ${r.date}
-                        </div>
-                    </div>
-                `).join('');
-                
-                document.getElementById('recordsView').innerHTML = html || 'لا توجد غيابات لهذا الشهر';
-            },
-
-            formatDate(date) {
-                const d = new Date(date);
-                const year = d.getFullYear();
-                const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                const day = d.getDate().toString().padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            },
-
-            formatTime(date) {
-                const d = new Date(date);
-                let hours = d.getHours();
-                const minutes = d.getMinutes().toString().padStart(2, '0');
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-                return `${hours}:${minutes} ${ampm}`;
-            },
-
-            updateClock() {
-                const now = new Date();
-                const time = this.formatTime(now);
-                if (document.getElementById('liveClock')) {
-                    document.getElementById('liveClock').textContent = time;
+        showConfirmationModal('تأكيد الحذف', 'هل أنت متأكد من أنك تريد حذف هذا السجل؟', async (confirmed) => {
+            if (confirmed) {
+                try {
+                    await deleteDoc(doc(db, collectionName, recordId));
+                } catch (e) {
+                    console.error("Error deleting document: ", e);
                 }
             }
-        };
+        });
+    }
 
-        // بدء النظام
-        app.init();
-    </script>
+    // وظيفة إعداد المستمع الفوري للرسائل الجديدة (جديد)
+    function setupAnnouncementListener() {
+        const docRef = doc(db, "announcements", "current");
+        onSnapshot(docRef, (doc) => {
+            if (doc.exists()) {
+                const announcement = doc.data();
+                announcementText.textContent = announcement.message;
+                announcementContainer.classList.remove('hidden');
+            } else {
+                announcementContainer.classList.add('hidden');
+            }
+        }, (error) => {
+            console.error("Error fetching announcement: ", error);
+        });
+    }
+
+    // وظيفة إرسال الرسالة من المدير (جديد)
+    sendAnnouncementButton.addEventListener('click', async () => {
+        if (!db) { showLoginMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        const message = announcementInput.value.trim();
+        if (message === "") {
+            showLoginMessage('الرجاء كتابة رسالة.', 'error');
+            return;
+        }
+
+        try {
+            const announcementDocRef = doc(db, "announcements", "current");
+            await setDoc(announcementDocRef, {
+                message: message,
+                timestamp: new Date().toISOString()
+            });
+            announcementInput.value = '';
+            showLoginMessage('تم إرسال الرسالة بنجاح!', 'success');
+        } catch (e) {
+            console.error("Error sending announcement: ", e);
+            showLoginMessage('حدث خطأ أثناء إرسال الرسالة.', 'error');
+        }
+    });
+    
+    // وظيفة توليد تقرير PDF (جديد)
+    generatePdfButton.addEventListener('click', async () => {
+        if (!db) {
+            showLoginMessage('لا يمكن الاتصال بالخدمة.', 'error');
+            return;
+        }
+
+        try {
+            // جلب جميع سجلات الحضور
+            const querySnapshot = await getDocs(collection(db, "attendanceRecords"));
+            const records = [];
+            querySnapshot.forEach(doc => {
+                records.push(doc.data());
+            });
+
+            // تصفية البيانات للأسبوع الماضي (مثال)
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            const weeklyRecords = records.filter(record => {
+                const recordDate = new Date(record.date);
+                return recordDate >= oneWeekAgo;
+            });
+
+            if (weeklyRecords.length === 0) {
+                showLoginMessage('لا توجد سجلات حضور للأسبوع الماضي.', 'info');
+                return;
+            }
+
+            // إنشاء مستند PDF
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            // إضافة الخط العربي لدعم اللغة العربية
+            // تم استخدام خط "Amiri-Regular" كمثال
+            const fontUrl = 'https://unpkg.com/jspdf-arabic-fix@1.0.1/amiri-regular.ttf';
+            const fontName = 'AmiriRegular';
+            const response = await fetch(fontUrl);
+            const font = await response.text();
+            doc.addFileToVFS(fontName, font);
+            doc.addFont(fontName, fontName, 'normal');
+            doc.setFont(fontName);
+
+            // إضافة عنوان التقرير
+            doc.setFontSize(22);
+            doc.text('تقرير الحضور الأسبوعي - صيدلية د.رامي', 148, 20, null, null, 'center');
+            doc.setFontSize(12);
+            doc.text(`التاريخ: ${new Date().toLocaleDateString('ar-EG')}`, 148, 28, null, null, 'center');
+            doc.text(`الفترة: من ${oneWeekAgo.toLocaleDateString('ar-EG')} إلى ${new Date().toLocaleDateString('ar-EG')}`, 148, 35, null, null, 'center');
+
+            // إعداد البيانات للجدول
+            const tableColumn = ["وقت الإنصراف", "وقت الحضور", "التاريخ", "اسم الموظف"];
+            const tableRows = [];
+
+            weeklyRecords.forEach(record => {
+                const rowData = [
+                    record.checkOut || 'لم يسجل',
+                    record.checkIn || 'لم يسجل',
+                    record.date,
+                    record.employeeName
+                ];
+                tableRows.push(rowData);
+            });
+
+            // إنشاء الجدول
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 50,
+                styles: { font: fontName, direction: 'rtl', cellPadding: 2, overflow: 'linebreak' },
+                headStyles: { fillColor: [52, 211, 153], textColor: [255, 255, 255] },
+                bodyStyles: { textColor: [0, 0, 0] },
+                alternateRowStyles: { fillColor: [240, 240, 240] },
+                theme: 'striped',
+                columnStyles: {
+                    0: { cellWidth: 35 },
+                    1: { cellWidth: 35 },
+                    2: { cellWidth: 35 },
+                    3: { cellWidth: 45 }
+                }
+            });
+
+            // حفظ الملف
+            const filename = `تقرير_الحضور_الأسبوعي_${new Date().toISOString().slice(0, 10)}.pdf`;
+            doc.save(filename);
+
+            showLoginMessage('تم توليد التقرير بنجاح. يمكنك الآن تنزيله.', 'success');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showLoginMessage('حدث خطأ أثناء توليد التقرير.', 'error');
+        }
+    });
+
+</script>
+
 </body>
 </html>
