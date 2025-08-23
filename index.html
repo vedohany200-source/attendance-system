@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صيدلية د.رامي | نظام الحضور</title>
+    <title>صيدلية د.رامي | نظام الحضور والإنصراف</title>
     <!-- تضمين Tailwind CSS و Font Awesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -13,6 +13,17 @@
         /* الخط المستخدم في التصميم */
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
         body { font-family: 'Tajawal', sans-serif; }
+        
+        /* تأثير أنيق على الأزرار */
+        .btn-elegant {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-elegant:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+
         .loading-spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-top: 4px solid #fff;
@@ -34,94 +45,151 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen flex items-center justify-center">
 
-<div class="container mx-auto p-4 max-w-2xl bg-white rounded-xl shadow-lg border-t-4 border-teal-500">
-    <h1 class="text-4xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center">
-        <i class="fas fa-prescription-bottle-alt text-teal-500 mr-3"></i>
+<div class="container mx-auto p-6 max-w-xl bg-white rounded-3xl shadow-2xl border border-gray-200">
+    <h1 class="text-4xl font-bold text-center text-gray-800 mb-2">
         صيدلية د.رامي
     </h1>
-    <p class="text-center text-gray-600 text-lg mb-8">نظام تسجيل الحضور والإنصراف</p>
+    <p class="text-center text-gray-500 text-lg mb-8">نظام تسجيل الحضور والإنصراف</p>
 
     <!-- واجهة تسجيل الدخول -->
-    <div id="login-container" class="space-y-4">
-        <div class="flex items-center border-2 border-gray-300 rounded-xl overflow-hidden shadow-sm">
-            <span class="p-3 bg-gray-200 text-gray-500">
-                <i class="fas fa-user-circle"></i>
+    <div id="login-container" class="space-y-6">
+        <div class="flex items-center bg-gray-50 border border-gray-300 rounded-2xl overflow-hidden shadow-sm">
+            <span class="p-4 bg-gray-100 text-gray-500">
+                <i class="fas fa-id-card text-xl"></i>
             </span>
-            <input id="employee-id-input" type="text" placeholder="أدخل رقم التعريف الخاص بك" class="flex-grow p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-r-lg">
+            <input id="employee-id-input" type="text" placeholder="أدخل رقم التعريف الخاص بك" class="flex-grow p-4 bg-transparent focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-r-2xl text-right">
         </div>
-        <button id="login-button" class="w-full bg-teal-500 text-white p-3 rounded-xl font-bold hover:bg-teal-600 transition duration-300 shadow-md">تسجيل الدخول</button>
+        <button id="login-button" class="btn-elegant w-full bg-teal-500 text-white p-4 rounded-2xl font-bold hover:bg-teal-600 transition-colors duration-300 shadow-lg">تسجيل الدخول</button>
         <div id="login-message" class="text-center text-sm font-medium mt-2"></div>
     </div>
 
     <!-- واجهة الموظف (مخفية في البداية) -->
     <div id="employee-container" class="space-y-6 hidden">
         <div class="text-center">
-            <h2 id="welcome-message" class="text-2xl font-semibold text-gray-700">مرحباً،</h2>
-            <p id="current-date" class="text-gray-500 mt-1"></p>
-            <!-- عنصر الساعة الجديدة -->
+            <h2 id="welcome-message" class="text-3xl font-bold text-gray-700">مرحباً،</h2>
+            <p id="current-date" class="text-gray-500 text-sm mt-1"></p>
             <p id="current-time" class="text-xl font-bold text-gray-700 mt-2"></p>
         </div>
 
         <!-- قسم الرسائل من المدير -->
-        <div id="announcement-container" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg hidden" role="alert">
-            <p class="font-bold">رسالة من المدير:</p>
-            <p id="announcement-text" class="mt-1"></p>
+        <div id="messages-container" class="space-y-4">
+            <h3 class="text-xl font-bold text-gray-700">رسائلك من المدير</h3>
+            <div id="messages-list" class="bg-gray-50 rounded-lg p-4 shadow-inner">
+                <!-- Messages will be added here dynamically -->
+                <p id="no-messages-text" class="text-gray-500 text-center">لا توجد رسائل جديدة.</p>
+            </div>
         </div>
 
         <div class="flex flex-col sm:flex-row gap-4">
-            <button id="check-in-button" class="flex-1 bg-green-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-green-600 transition duration-300 shadow-md flex items-center justify-center">
+            <button id="check-in-button" class="btn-elegant flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white p-5 rounded-2xl font-bold text-lg hover:from-green-600 hover:to-green-700 transition duration-300 shadow-md flex items-center justify-center">
                 <span class="loading-spinner hidden"></span>
                 <span class="button-text"><i class="fas fa-sign-in-alt mr-2"></i>تسجيل الحضور</span>
             </button>
-            <button id="check-out-button" class="flex-1 bg-red-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-red-600 transition duration-300 shadow-md flex items-center justify-center">
+            <button id="check-out-button" class="btn-elegant flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white p-5 rounded-2xl font-bold text-lg hover:from-red-600 hover:to-red-700 transition duration-300 shadow-md flex items-center justify-center">
                 <span class="loading-spinner hidden"></span>
                 <span class="button-text"><i class="fas fa-sign-out-alt mr-2"></i>تسجيل الإنصراف</span>
             </button>
         </div>
         
+        <!-- زر عرض سجل الحضور الخاص بالموظف -->
+        <button id="view-my-attendance-button" class="btn-elegant w-full bg-gray-500 text-white p-4 rounded-2xl font-bold text-lg hover:bg-gray-600 transition duration-300 shadow-md flex items-center justify-center mt-4">
+            <i class="fas fa-history mr-2"></i>عرض سجل حضوري
+        </button>
+
         <!-- حقل اختيار تاريخ الإجازة -->
         <div class="flex flex-col items-center">
             <label for="vacation-date-input" class="text-gray-600 font-semibold mb-2">اختر تاريخ الإجازة:</label>
-            <input type="date" id="vacation-date-input" class="p-3 border-2 border-gray-300 rounded-xl w-full text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="date" id="vacation-date-input" class="p-4 border border-gray-300 rounded-2xl w-full text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
         <!-- زر تسجيل الإجازات الجديد -->
-        <button id="vacation-button" class="w-full bg-blue-500 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-600 transition duration-300 shadow-md mt-4 flex items-center justify-center">
+        <button id="vacation-button" class="btn-elegant w-full bg-blue-500 text-white p-4 rounded-2xl font-bold text-lg hover:bg-blue-600 transition duration-300 shadow-md mt-4 flex items-center justify-center">
             <span class="loading-spinner hidden"></span>
             <span class="button-text"><i class="fas fa-suitcase-rolling mr-2"></i>تسجيل إجازة</span>
         </button>
 
         <div id="attendance-message" class="text-center text-sm font-medium mt-2 p-3 bg-gray-100 rounded-lg hidden"></div>
         
-        <button id="logout-button" class="w-full bg-gray-300 text-gray-800 p-3 rounded-xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
+        <button id="logout-button" class="btn-elegant w-full bg-gray-300 text-gray-800 p-4 rounded-2xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
             تسجيل الخروج
+        </button>
+    </div>
+    
+    <!-- واجهة سجل الموظف (مخفية في البداية) -->
+    <div id="employee-records-container" class="space-y-6 hidden">
+        <div class="text-center">
+            <h2 class="text-2xl font-bold text-gray-700">سجل حضوري</h2>
+        </div>
+        <div id="my-attendance-list" class="overflow-x-auto bg-gray-50 rounded-lg p-2 shadow-inner max-h-96">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">التاريخ</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">وقت الحضور</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">وقت الإنصراف</th>
+                    </tr>
+                </thead>
+                <tbody id="my-attendance-list-body" class="bg-white divide-y divide-gray-200">
+                    <!-- سيتم إضافة سجلات الحضور الخاصة بالموظف هنا -->
+                </tbody>
+            </table>
+        </div>
+        <button id="back-to-employee-view-button" class="btn-elegant w-full bg-gray-300 text-gray-800 p-4 rounded-2xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
+            العودة
         </button>
     </div>
 
     <!-- واجهة الأدمن (مخفية في البداية) -->
     <div id="admin-container" class="space-y-6 hidden">
         <div class="text-center">
-            <h2 class="text-2xl font-semibold text-gray-700">مرحباً، يا مدير</h2>
+            <h2 class="text-3xl font-bold text-gray-700">مرحباً، يا مدير</h2>
             <p class="text-gray-500 mt-1">سجل الحضور والإنصراف</p>
         </div>
 
-        <!-- قسم الرسائل للموظفين -->
-        <div class="space-y-4">
-            <input id="announcement-input" type="text" placeholder="أكتب رسالة للموظفين" class="w-full p-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button id="send-announcement-button" class="w-full bg-blue-500 text-white p-3 rounded-xl font-bold hover:bg-blue-600 transition duration-300 shadow-md">
-                إرسال رسالة
+        <!-- قسم إرسال الرسائل الخاصة -->
+        <div class="space-y-4 p-4 bg-gray-100 rounded-xl shadow-inner">
+            <h3 class="text-xl font-bold text-gray-700">إرسال رسالة خاصة</h3>
+            <div>
+                <label for="employee-select" class="block text-gray-700 font-semibold mb-2">اختر الموظف:</label>
+                <select id="employee-select" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+            <div>
+                <label for="private-message-input" class="block text-gray-700 font-semibold mb-2">اكتب الرسالة:</label>
+                <textarea id="private-message-input" rows="4" placeholder="اكتب رسالتك هنا..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-right"></textarea>
+            </div>
+            <button id="send-private-message-button" class="btn-elegant w-full bg-blue-500 text-white p-4 rounded-2xl font-bold hover:bg-blue-600 transition duration-300 shadow-md">
+                إرسال الرسالة
+            </button>
+        </div>
+        <!-- منطقة الرسائل الجديدة للمدير -->
+        <div id="admin-message" class="text-center text-sm font-medium mt-2"></div>
+
+        <!-- قسم تصفية السجل -->
+        <div class="flex flex-col sm:flex-row gap-4 items-end">
+            <div class="flex-1 w-full">
+                <label for="filter-start-date" class="block text-gray-700 text-sm font-bold mb-1">من تاريخ:</label>
+                <input type="date" id="filter-start-date" class="w-full p-3 border border-gray-300 rounded-lg">
+            </div>
+            <div class="flex-1 w-full">
+                <label for="filter-end-date" class="block text-gray-700 text-sm font-bold mb-1">إلى تاريخ:</label>
+                <input type="date" id="filter-end-date" class="w-full p-3 border border-gray-300 rounded-lg">
+            </div>
+            <button id="filter-button" class="btn-elegant w-full sm:w-auto mt-4 sm:mt-0 bg-gray-500 text-white p-3 rounded-2xl font-bold hover:bg-gray-600 transition duration-300 shadow-md">
+                تصفية
             </button>
         </div>
 
         <!-- زر توليد التقرير -->
-        <button id="generate-pdf-button" class="w-full bg-purple-600 text-white p-3 rounded-xl font-bold hover:bg-purple-700 transition duration-300 shadow-md flex items-center justify-center">
+        <button id="generate-pdf-button" class="btn-elegant w-full bg-purple-600 text-white p-4 rounded-2xl font-bold hover:bg-purple-700 transition duration-300 shadow-md flex items-center justify-center">
             <i class="fas fa-file-pdf mr-2"></i>
-            توليد تقرير أسبوعي (PDF)
+            توليد تقرير (PDF)
         </button>
 
-        <div class="overflow-x-auto bg-gray-50 rounded-lg p-2 shadow-inner max-h-96">
+        <div class="overflow-x-auto bg-gray-50 rounded-xl p-2 shadow-inner max-h-96">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-200">
                     <tr>
@@ -140,14 +208,14 @@
 
         <!-- قسم سجلات الإجازات الجديد -->
         <div class="mt-8">
-            <h3 class="text-xl font-semibold text-gray-700 mb-4">سجل الإجازات</h3>
-            <div class="overflow-x-auto bg-gray-50 rounded-lg p-2 shadow-inner max-h-96">
+            <h3 class="text-xl font-bold text-gray-700 mb-4">سجل الإجازات</h3>
+            <div class="overflow-x-auto bg-gray-50 rounded-xl p-2 shadow-inner max-h-96">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-200">
                         <tr>
                             <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الاسم</th>
                             <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">التاريخ</th>
-                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراء</th>
+                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراء</th>
                         </tr>
                     </thead>
                     <tbody id="vacation-list" class="bg-white divide-y divide-gray-200">
@@ -157,19 +225,30 @@
             </div>
         </div>
 
-        <button id="admin-logout-button" class="w-full bg-gray-300 text-gray-800 p-3 rounded-xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
+        <button id="admin-logout-button" class="btn-elegant w-full bg-gray-300 text-gray-800 p-4 rounded-2xl font-bold hover:bg-gray-400 transition duration-300 mt-4">
             تسجيل الخروج
         </button>
     </div>
 </div>
 
-<!-- Modal for confirmation messages -->
+<!-- Modal for confirmation and editing messages -->
 <div id="modal-container" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <h3 id="modal-title" class="text-lg leading-6 font-medium text-gray-900"></h3>
             <div class="mt-2 px-7 py-3">
                 <p id="modal-body" class="text-sm text-gray-500"></p>
+                <!-- New form for editing records -->
+                <div id="edit-form" class="hidden mt-4 space-y-4 text-right">
+                    <div>
+                        <label for="edit-checkin" class="block text-sm font-medium text-gray-700">وقت الحضور:</label>
+                        <input type="text" id="edit-checkin" class="mt-1 p-2 w-full border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="edit-checkout" class="block text-sm font-medium text-gray-700">وقت الإنصراف:</label>
+                        <input type="text" id="edit-checkout" class="mt-1 p-2 w-full border border-gray-300 rounded-md">
+                    </div>
+                </div>
             </div>
             <div class="items-center px-4 py-3">
                 <button id="modal-confirm" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
@@ -183,10 +262,11 @@
     </div>
 </div>
 
+
 <script type="module">
     // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, where, query, limit, doc, deleteDoc, updateDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, where, query, limit, doc, deleteDoc, updateDoc, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Your web app's Firebase configuration
     const firebaseConfig = {
@@ -207,13 +287,14 @@
         console.log("Firebase initialized successfully.");
     } catch (e) {
         console.error("Firebase initialization failed:", e);
-        showLoginMessage('خطأ في الاتصال بالخدمة. يرجى المحاولة لاحقًا.', 'error');
+        showMessage(loginMessage, 'خطأ في الاتصال بالخدمة. يرجى المحاولة لاحقًا.', 'error');
     }
 
     // الوصول إلى عناصر HTML
     const loginContainer = document.getElementById('login-container');
     const employeeContainer = document.getElementById('employee-container');
     const adminContainer = document.getElementById('admin-container');
+    const employeeRecordsContainer = document.getElementById('employee-records-container');
     const employeeIdInput = document.getElementById('employee-id-input');
     const loginButton = document.getElementById('login-button');
     const logoutButton = document.getElementById('logout-button');
@@ -229,13 +310,16 @@
     const currentDateElement = document.getElementById('current-date');
     const currentTimeElement = document.getElementById('current-time');
     const loginMessage = document.getElementById('login-message');
+    const adminMessage = document.getElementById('admin-message');
     const generatePdfButton = document.getElementById('generate-pdf-button');
     
-    // عناصر الرسائل الجديدة
-    const announcementContainer = document.getElementById('announcement-container');
-    const announcementText = document.getElementById('announcement-text');
-    const announcementInput = document.getElementById('announcement-input');
-    const sendAnnouncementButton = document.getElementById('send-announcement-button');
+    // عناصر الرسائل الخاصة الجديدة
+    const messagesContainer = document.getElementById('messages-container');
+    const messagesList = document.getElementById('messages-list');
+    const noMessagesText = document.getElementById('no-messages-text');
+    const employeeSelect = document.getElementById('employee-select');
+    const privateMessageInput = document.getElementById('private-message-input');
+    const sendPrivateMessageButton = document.getElementById('send-private-message-button');
 
     // Modal elements
     const modalContainer = document.getElementById('modal-container');
@@ -243,6 +327,19 @@
     const modalBody = document.getElementById('modal-body');
     const modalConfirm = document.getElementById('modal-confirm');
     const modalCancel = document.getElementById('modal-cancel');
+    const editForm = document.getElementById('edit-form');
+    const editCheckinInput = document.getElementById('edit-checkin');
+    const editCheckoutInput = document.getElementById('edit-checkout');
+
+    // New filter elements
+    const filterStartDateInput = document.getElementById('filter-start-date');
+    const filterEndDateInput = document.getElementById('filter-end-date');
+    const filterButton = document.getElementById('filter-button');
+
+    // Employee attendance view elements
+    const viewMyAttendanceButton = document.getElementById('view-my-attendance-button');
+    const myAttendanceListBody = document.getElementById('my-attendance-list-body');
+    const backToEmployeeViewButton = document.getElementById('back-to-employee-view-button');
 
     // قائمة الموظفين والأدمن
     const employees = [
@@ -297,112 +394,50 @@
     displayCurrentTime(); // عرض الوقت فورًا
     setInterval(displayCurrentTime, 1000); // تحديث الوقت كل ثانية
 
-    // Show a custom confirmation modal
-    function showConfirmationModal(title, message, onConfirm) {
+    // Show a custom confirmation or editing modal
+    function showModal(title, message, onConfirm, showEditForm = false, checkin = '', checkout = '') {
         modalTitle.textContent = title;
         modalBody.textContent = message;
         modalContainer.classList.remove('hidden');
-        modalConfirm.onclick = () => {
-            modalContainer.classList.add('hidden');
-            onConfirm(true);
-        };
+
+        if (showEditForm) {
+            editForm.classList.remove('hidden');
+            editCheckinInput.value = checkin;
+            editCheckoutInput.value = checkout;
+            modalConfirm.textContent = 'حفظ التعديلات';
+            modalConfirm.onclick = () => {
+                modalContainer.classList.add('hidden');
+                onConfirm(true, editCheckinInput.value, editCheckoutInput.value);
+            };
+        } else {
+            editForm.classList.add('hidden');
+            modalConfirm.textContent = 'تأكيد';
+            modalConfirm.onclick = () => {
+                modalContainer.classList.add('hidden');
+                onConfirm(true);
+            };
+        }
+
         modalCancel.onclick = () => {
             modalContainer.classList.add('hidden');
             onConfirm(false);
         };
     }
 
-    // وظيفة تسجيل الدخول
-    loginButton.addEventListener('click', () => {
-        if (!db) {
-            showLoginMessage('لا يمكن الاتصال بالخدمة. يرجى المحاولة لاحقًا.', 'error');
-            return;
-        }
-        const employeeId = employeeIdInput.value.trim().toUpperCase();
-        if (employeeId === '') {
-            showLoginMessage('الرجاء إدخال رقم التعريف.', 'error');
-            return;
-        }
-        if (employeeId === adminId) {
-            loggedInUser = { id: adminId, name: 'المدير' };
-            showAdminView();
-        } else {
-            const employee = employees.find(emp => emp.id.toUpperCase() === employeeId);
-            if (employee) {
-                loggedInUser = employee;
-                showEmployeeView();
-            } else {
-                showLoginMessage('رقم تعريف غير صحيح. حاول مرة أخرى.', 'error');
-            }
-        }
-    });
-
-    // وظيفة تسجيل الخروج
-    function logout() {
-        loggedInUser = null;
-        employeeIdInput.value = '';
-        loginContainer.classList.remove('hidden');
-        employeeContainer.classList.add('hidden');
-        adminContainer.classList.add('hidden');
-        hideAttendanceMessage();
-        hideLoginMessage();
-    }
-    logoutButton.addEventListener('click', logout);
-    adminLogoutButton.addEventListener('click', logout);
-
-    // عرض واجهة الموظف
-    function showEmployeeView() {
-        loginContainer.classList.add('hidden');
-        employeeContainer.classList.remove('hidden');
-        welcomeMessage.textContent = `مرحباً، ${loggedInUser.name}`;
-        setupAnnouncementListener(); // إعداد المستمع للرسائل
-    }
-
-    // عرض واجهة الأدمن
-    function showAdminView() {
-        loginContainer.classList.add('hidden');
-        adminContainer.classList.remove('hidden');
-        // استخدام onSnapshot للحصول على تحديثات فورية
-        setupAttendanceListener();
-        setupVacationListener();
-    }
-
-    // وظيفة عرض رسائل الحضور
-    function showAttendanceMessage(message, type) {
-        attendanceMessage.textContent = message;
-        attendanceMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
+    // وظيفة عرض رسائل النظام
+    function showMessage(element, message, type) {
+        element.textContent = message;
+        element.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500', 'text-blue-500');
         if (type === 'success') {
-            attendanceMessage.classList.add('text-green-500');
+            element.classList.add('text-green-500');
         } else if (type === 'error') {
-            attendanceMessage.classList.add('text-red-500');
+            element.classList.add('text-red-500');
+        } else if (type === 'info') {
+            element.classList.add('text-blue-500');
         } else {
-            attendanceMessage.classList.add('text-yellow-500');
+            element.classList.add('text-yellow-500');
         }
-        setTimeout(() => hideAttendanceMessage(), 5000);
-    }
-
-    // إخفاء رسالة الحضور
-    function hideAttendanceMessage() {
-        attendanceMessage.classList.add('hidden');
-    }
-
-    // عرض رسالة تسجيل الدخول
-    function showLoginMessage(message, type) {
-        loginMessage.textContent = message;
-        loginMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
-        if (type === 'success') {
-            loginMessage.classList.add('text-green-500');
-        } else if (type === 'error') {
-            loginMessage.classList.add('text-red-500');
-        } else {
-            loginMessage.classList.add('text-yellow-500');
-        }
-        setTimeout(() => hideLoginMessage(), 5000);
-    }
-
-    // إخفاء رسالة تسجيل الدخول
-    function hideLoginMessage() {
-        loginMessage.classList.add('hidden');
+        setTimeout(() => element.classList.add('hidden'), 5000);
     }
 
     // وظيفة لعرض أو إخفاء مؤشر التحميل
@@ -420,20 +455,91 @@
         }
     }
 
+    // وظيفة تسجيل الدخول
+    loginButton.addEventListener('click', () => {
+        if (!db) {
+            showMessage(loginMessage, 'لا يمكن الاتصال بالخدمة. يرجى المحاولة لاحقًا.', 'error');
+            return;
+        }
+        const employeeId = employeeIdInput.value.trim().toUpperCase();
+        if (employeeId === '') {
+            showMessage(loginMessage, 'الرجاء إدخال رقم التعريف.', 'error');
+            return;
+        }
+        if (employeeId === adminId) {
+            loggedInUser = { id: adminId, name: 'المدير' };
+            showAdminView();
+        } else {
+            const employee = employees.find(emp => emp.id.toUpperCase() === employeeId);
+            if (employee) {
+                loggedInUser = employee;
+                showEmployeeView();
+            } else {
+                showMessage(loginMessage, 'رقم تعريف غير صحيح. حاول مرة أخرى.', 'error');
+            }
+        }
+    });
+
+    // وظيفة تسجيل الخروج
+    function logout() {
+        loggedInUser = null;
+        employeeIdInput.value = '';
+        loginContainer.classList.remove('hidden');
+        employeeContainer.classList.add('hidden');
+        adminContainer.classList.add('hidden');
+        employeeRecordsContainer.classList.add('hidden');
+        showMessage(attendanceMessage, '', 'info');
+        showMessage(loginMessage, '', 'info');
+    }
+    logoutButton.addEventListener('click', logout);
+    adminLogoutButton.addEventListener('click', logout);
+    backToEmployeeViewButton.addEventListener('click', () => {
+        employeeRecordsContainer.classList.add('hidden');
+        employeeContainer.classList.remove('hidden');
+    });
+
+    // عرض واجهة الموظف
+    function showEmployeeView() {
+        loginContainer.classList.add('hidden');
+        employeeContainer.classList.remove('hidden');
+        welcomeMessage.textContent = `مرحباً، ${loggedInUser.name}`;
+        setupEmployeeMessagesListener(); // إعداد المستمع للرسائل الخاصة
+    }
+
+    // عرض واجهة الأدمن
+    function showAdminView() {
+        loginContainer.classList.add('hidden');
+        adminContainer.classList.remove('hidden');
+        populateEmployeeSelect(); // ملء قائمة الموظفين
+        setupAttendanceListener(); // إعداد المستمع لسجلات الحضور
+        setupVacationListener(); // إعداد المستمع لسجلات الإجازات
+    }
+    
+    // وظيفة لملء القائمة المنسدلة بالموظفين
+    function populateEmployeeSelect() {
+        employeeSelect.innerHTML = '';
+        employees.forEach(emp => {
+            const option = document.createElement('option');
+            option.value = emp.id;
+            option.textContent = emp.name;
+            employeeSelect.appendChild(option);
+        });
+    }
+
     // وظيفة تسجيل الحضور (تم تحديثها)
     checkInButton.addEventListener('click', async () => {
-        if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        if (!db) { showMessage(attendanceMessage, 'لا يمكن الاتصال بالخدمة.', 'error'); return; }
 
         // التحقق من أن الوقت الحالي هو بعد الساعة 10 صباحًا
         const now = new Date();
         const currentHour = now.getHours();
         if (currentHour < 10) {
-            showAttendanceMessage('التسجيل متاح فقط بعد الساعة 10:00 صباحاً.', 'error');
+            showMessage(attendanceMessage, 'التسجيل متاح فقط بعد الساعة 10:00 صباحاً.', 'error');
             return;
         }
 
         showLoading(checkInButton, true);
-        showAttendanceMessage('جارٍ التحقق من موقعك وتسجيل الحضور...', 'info');
+        showMessage(attendanceMessage, 'جارٍ التحقق من موقعك وتسجيل الحضور...', 'info');
 
         // الحصول على الموقع الجغرافي للمستخدم
         navigator.geolocation.getCurrentPosition(async (position) => {
@@ -452,7 +558,7 @@
                     employeeId: loggedInUser.id,
                     employeeName: loggedInUser.name,
                     date: today,
-                    checkIn: new Date().toLocaleTimeString('ar-EG'),
+                    checkIn: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
                     checkOut: null
                 };
                 
@@ -462,18 +568,18 @@
                     
                     if (querySnapshot.empty) {
                         await addDoc(collection(db, "attendanceRecords"), attendanceRecord);
-                        showAttendanceMessage('تم تسجيل حضورك بنجاح!', 'success');
+                        showMessage(attendanceMessage, 'تم تسجيل حضورك بنجاح!', 'success');
                     } else {
-                        showAttendanceMessage('تم تسجيل حضورك بالفعل اليوم.', 'error');
+                        showMessage(attendanceMessage, 'تم تسجيل حضورك بالفعل اليوم.', 'error');
                     }
                 } catch (e) {
                     console.error("Error adding document: ", e);
-                    showAttendanceMessage('حدث خطأ أثناء تسجيل الحضور.', 'error');
+                    showMessage(attendanceMessage, 'حدث خطأ أثناء تسجيل الحضور.', 'error');
                 } finally {
                     showLoading(checkInButton, false);
                 }
             } else {
-                showAttendanceMessage(`لا يمكنك تسجيل الحضور من هذا الموقع. المسافة ${Math.round(distance)} متر من الصيدلية.`, 'error');
+                showMessage(attendanceMessage, `لا يمكنك تسجيل الحضور من هذا الموقع. المسافة ${Math.round(distance)} متر من الصيدلية.`, 'error');
                 showLoading(checkInButton, false);
             }
         }, (error) => {
@@ -482,14 +588,14 @@
             if (error.code === error.PERMISSION_DENIED) {
                 errorMessage = 'الرجاء السماح بالوصول إلى موقعك لتسجيل الحضور.';
             }
-            showAttendanceMessage(errorMessage, 'error');
+            showMessage(attendanceMessage, errorMessage, 'error');
             showLoading(checkInButton, false);
         });
     });
 
     // وظيفة تسجيل الإنصراف
     checkOutButton.addEventListener('click', async () => {
-        if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        if (!db) { showMessage(attendanceMessage, 'لا يمكن الاتصال بالخدمة.', 'error'); return; }
         showLoading(checkOutButton, true);
 
         const today = new Date().toLocaleDateString('en-US');
@@ -502,17 +608,17 @@
                 const docRef = doc(db, "attendanceRecords", querySnapshot.docs[0].id);
                 const data = querySnapshot.docs[0].data();
                 if (data.checkOut) {
-                    showAttendanceMessage('تم تسجيل انصرافك بالفعل اليوم.', 'error');
+                    showMessage(attendanceMessage, 'تم تسجيل انصرافك بالفعل اليوم.', 'error');
                     return;
                 }
-                await updateDoc(docRef, { checkOut: new Date().toLocaleTimeString('ar-EG') });
-                showAttendanceMessage('تم تسجيل انصرافك بنجاح!', 'success');
+                await updateDoc(docRef, { checkOut: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) });
+                showMessage(attendanceMessage, 'تم تسجيل انصرافك بنجاح!', 'success');
             } else {
-                showAttendanceMessage('يجب عليك تسجيل الحضور أولاً.', 'error');
+                showMessage(attendanceMessage, 'يجب عليك تسجيل الحضور أولاً.', 'error');
             }
         } catch (e) {
             console.error("Error updating document: ", e);
-            showAttendanceMessage('حدث خطأ أثناء تسجيل الإنصراف.', 'error');
+            showMessage(attendanceMessage, 'حدث خطأ أثناء تسجيل الإنصراف.', 'error');
         } finally {
             showLoading(checkOutButton, false);
         }
@@ -520,16 +626,16 @@
 
     // وظيفة تسجيل الإجازة
     vacationButton.addEventListener('click', async () => {
-        if (!db) { showAttendanceMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        if (!db) { showMessage(attendanceMessage, 'لا يمكن الاتصال بالخدمة.', 'error'); return; }
         showLoading(vacationButton, true);
         const vacationDate = vacationDateInput.value;
         if (!vacationDate) {
-            showAttendanceMessage('الرجاء اختيار تاريخ الإجازة أولاً.', 'error');
+            showMessage(attendanceMessage, 'الرجاء اختيار تاريخ الإجازة أولاً.', 'error');
             showLoading(vacationButton, false);
             return;
         }
         
-        showAttendanceMessage('جارٍ تسجيل الإجازة...', 'info');
+        showMessage(attendanceMessage, 'جارٍ تسجيل الإجازة...', 'info');
 
         const vacationRecord = {
             employeeId: loggedInUser.id,
@@ -539,23 +645,26 @@
         };
         try {
             await addDoc(collection(db, "vacationRecords"), vacationRecord);
-            showAttendanceMessage('تم تسجيل إجازتك بنجاح!', 'success');
+            showMessage(attendanceMessage, 'تم تسجيل إجازتك بنجاح!', 'success');
             vacationDateInput.value = '';
         } catch (e) {
             console.error("Error adding vacation document: ", e);
-            showAttendanceMessage('حدث خطأ أثناء تسجيل الإجازة.', 'error');
+            showMessage(attendanceMessage, 'حدث خطأ أثناء تسجيل الإجازة.', 'error');
         } finally {
             showLoading(vacationButton, false);
         }
     });
 
     // وظيفة إعداد المستمع الفوري لسجلات الحضور
-    function setupAttendanceListener() {
-        const q = collection(db, "attendanceRecords");
-        // onSnapshot listens for real-time updates and fires whenever the data changes.
+    function setupAttendanceListener(startDate = null, endDate = null) {
+        let q = collection(db, "attendanceRecords");
+        if (startDate && endDate) {
+             q = query(q, where("date", ">=", startDate), where("date", "<=", endDate));
+        }
+        
         onSnapshot(q, (querySnapshot) => {
             console.log("Real-time attendance update received from Firestore.");
-            attendanceList.innerHTML = ''; // مسح القائمة الحالية
+            attendanceList.innerHTML = '';
             querySnapshot.forEach((doc) => {
                 const record = doc.data();
                 const recordId = doc.id;
@@ -567,6 +676,9 @@
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.checkIn || '-'}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.checkOut || '-'}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-right">
+                        <button class="text-blue-600 hover:text-blue-900 edit-btn mr-2" data-id="${recordId}" data-checkin="${record.checkIn || ''}" data-checkout="${record.checkOut || ''}">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${recordId}" data-type="attendance">
                             <i class="fas fa-trash-alt"></i>
                         </button>
@@ -574,7 +686,7 @@
                 `;
                 attendanceList.appendChild(row);
             });
-            attachDeleteListeners();
+            attachActionListeners();
         }, (error) => {
             console.error("Error fetching attendance documents: ", error);
         });
@@ -583,10 +695,9 @@
     // وظيفة إعداد المستمع الفوري لسجلات الإجازات
     function setupVacationListener() {
         const q = collection(db, "vacationRecords");
-        // onSnapshot listens for real-time updates and fires whenever the data changes.
         onSnapshot(q, (querySnapshot) => {
             console.log("Real-time vacation update received from Firestore.");
-            vacationList.innerHTML = ''; // مسح القائمة الحالية
+            vacationList.innerHTML = '';
             querySnapshot.forEach((doc) => {
                 const record = doc.data();
                 const recordId = doc.id;
@@ -603,17 +714,21 @@
                 `;
                 vacationList.appendChild(row);
             });
-            attachDeleteListeners();
+            attachActionListeners();
         }, (error) => {
             console.error("Error fetching vacation documents: ", error);
         });
     }
 
-    // وظيفة إرفاق مستمعي الأحداث لأزرار الحذف
-    function attachDeleteListeners() {
+    // وظيفة إرفاق مستمعي الأحداث لأزرار الحذف والتعديل
+    function attachActionListeners() {
         document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.removeEventListener('click', handleDelete); // إزالة المستمعين القدامى لتجنب التكرار
+            btn.removeEventListener('click', handleDelete);
             btn.addEventListener('click', handleDelete);
+        });
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.removeEventListener('click', handleEdit);
+            btn.addEventListener('click', handleEdit);
         });
     }
     
@@ -623,7 +738,7 @@
         const recordType = e.currentTarget.getAttribute('data-type');
         const collectionName = recordType === 'attendance' ? 'attendanceRecords' : 'vacationRecords';
 
-        showConfirmationModal('تأكيد الحذف', 'هل أنت متأكد من أنك تريد حذف هذا السجل؟', async (confirmed) => {
+        showModal('تأكيد الحذف', 'هل أنت متأكد من أنك تريد حذف هذا السجل؟', async (confirmed) => {
             if (confirmed) {
                 try {
                     await deleteDoc(doc(db, collectionName, recordId));
@@ -634,71 +749,153 @@
         });
     }
 
-    // وظيفة إعداد المستمع الفوري للرسائل الجديدة
-    function setupAnnouncementListener() {
-        const docRef = doc(db, "announcements", "current");
-        onSnapshot(docRef, (doc) => {
-            if (doc.exists()) {
-                const announcement = doc.data();
-                announcementText.textContent = announcement.message;
-                announcementContainer.classList.remove('hidden');
+    // وظيفة معالجة التعديل
+    async function handleEdit(e) {
+        const recordId = e.currentTarget.getAttribute('data-id');
+        const checkin = e.currentTarget.getAttribute('data-checkin');
+        const checkout = e.currentTarget.getAttribute('data-checkout');
+
+        showModal('تعديل سجل الحضور', 'يرجى تعديل الأوقات أدناه:', async (confirmed, newCheckin, newCheckout) => {
+            if (confirmed) {
+                try {
+                    const docRef = doc(db, "attendanceRecords", recordId);
+                    await updateDoc(docRef, {
+                        checkIn: newCheckin,
+                        checkOut: newCheckout
+                    });
+                    showMessage(adminMessage, 'تم تعديل السجل بنجاح!', 'success');
+                } catch (e) {
+                    console.error("Error updating document: ", e);
+                    showMessage(adminMessage, 'حدث خطأ أثناء تعديل السجل.', 'error');
+                }
+            }
+        }, true, checkin, checkout);
+    }
+    
+    // وظيفة إعداد المستمع الفوري للرسائل الخاصة للموظف
+    function setupEmployeeMessagesListener() {
+        // Query to get messages where the recipientId matches the logged-in employee's ID
+        const messagesRef = collection(db, "employeeMessages");
+        const q = query(messagesRef, where("recipientId", "==", loggedInUser.id), orderBy("timestamp", "desc"));
+        
+        onSnapshot(q, (querySnapshot) => {
+            console.log("Private messages update received.");
+            messagesList.innerHTML = '';
+            if (querySnapshot.empty) {
+                noMessagesText.classList.remove('hidden');
             } else {
-                announcementContainer.classList.add('hidden');
+                noMessagesText.classList.add('hidden');
+                querySnapshot.forEach((doc) => {
+                    const message = doc.data();
+                    const messageCard = document.createElement('div');
+                    messageCard.className = 'p-4 bg-white rounded-lg shadow-sm mb-2';
+                    messageCard.innerHTML = `
+                        <p class="text-sm text-gray-800">${message.message}</p>
+                        <p class="text-xs text-gray-400 mt-2">${new Date(message.timestamp).toLocaleString('ar-EG')}</p>
+                    `;
+                    messagesList.appendChild(messageCard);
+                });
             }
         }, (error) => {
-            console.error("Error fetching announcement: ", error);
+            console.error("Error fetching private messages: ", error);
         });
     }
 
-    // وظيفة إرسال الرسالة من المدير
-    sendAnnouncementButton.addEventListener('click', async () => {
-        if (!db) { showLoginMessage('لا يمكن الاتصال بالخدمة.', 'error'); return; }
-        const message = announcementInput.value.trim();
-        if (message === "") {
-            showLoginMessage('الرجاء كتابة رسالة.', 'error');
+    // وظيفة إرسال الرسالة الخاصة من المدير
+    sendPrivateMessageButton.addEventListener('click', async () => {
+        if (!db) { showMessage(adminMessage, 'لا يمكن الاتصال بالخدمة.', 'error'); return; }
+        const recipientId = employeeSelect.value;
+        const message = privateMessageInput.value.trim();
+
+        if (!recipientId || message === "") {
+            showMessage(adminMessage, 'الرجاء اختيار موظف وكتابة رسالة.', 'error');
             return;
         }
 
         try {
-            const announcementDocRef = doc(db, "announcements", "current");
-            await setDoc(announcementDocRef, {
+            await addDoc(collection(db, "employeeMessages"), {
+                recipientId: recipientId,
+                senderId: adminId, // The admin ID
                 message: message,
                 timestamp: new Date().toISOString()
             });
-            announcementInput.value = '';
-            showLoginMessage('تم إرسال الرسالة بنجاح!', 'success');
+            privateMessageInput.value = '';
+            showMessage(adminMessage, 'تم إرسال الرسالة بنجاح!', 'success');
         } catch (e) {
-            console.error("Error sending announcement: ", e);
-            showLoginMessage('حدث خطأ أثناء إرسال الرسالة.', 'error');
+            console.error("Error sending private message: ", e);
+            showMessage(adminMessage, 'حدث خطأ أثناء إرسال الرسالة.', 'error');
         }
     });
-    
-    // وظيفة توليد تقرير PDF
+
+    // إضافة مستمع لزر التصفية
+    filterButton.addEventListener('click', () => {
+        const startDate = filterStartDateInput.value;
+        const endDate = filterEndDateInput.value;
+        if (startDate && endDate) {
+            setupAttendanceListener(startDate, endDate);
+        } else {
+            showMessage(adminMessage, 'الرجاء اختيار تاريخ بداية ونهاية للتصفية.', 'error');
+        }
+    });
+
+    // وظيفة إعداد عرض سجل الحضور الخاص بالموظف
+    viewMyAttendanceButton.addEventListener('click', () => {
+        employeeContainer.classList.add('hidden');
+        employeeRecordsContainer.classList.remove('hidden');
+        fetchEmployeeAttendanceRecords();
+    });
+
+    // وظيفة جلب وعرض سجلات الموظف
+    async function fetchEmployeeAttendanceRecords() {
+        if (!db) return;
+        myAttendanceListBody.innerHTML = '';
+        try {
+            const q = query(collection(db, "attendanceRecords"), where("employeeId", "==", loggedInUser.id));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                const record = doc.data();
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-100 transition-colors duration-200';
+                row.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.date}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.checkIn || '-'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${record.checkOut || '-'}</td>
+                `;
+                myAttendanceListBody.appendChild(row);
+            });
+        } catch (e) {
+            console.error("Error fetching employee attendance records: ", e);
+        }
+    }
+
+    // وظيفة توليد تقرير PDF (محدثة لاستخدام التصفية)
     generatePdfButton.addEventListener('click', async () => {
         if (!db) {
-            showLoginMessage('لا يمكن الاتصال بالخدمة.', 'error');
+            showMessage(adminMessage, 'لا يمكن الاتصال بالخدمة.', 'error');
             return;
         }
 
         try {
-            // جلب جميع سجلات الحضور
-            const querySnapshot = await getDocs(collection(db, "attendanceRecords"));
+            const startDate = filterStartDateInput.value;
+            const endDate = filterEndDateInput.value;
+            
+            let q = collection(db, "attendanceRecords");
+            if (startDate && endDate) {
+                // Filter records based on the selected date range
+                q = query(q, where("date", ">=", startDate), where("date", "<=", endDate));
+            } else {
+                showMessage(adminMessage, 'الرجاء تحديد نطاق زمني لتوليد التقرير.', 'error');
+                return;
+            }
+
+            const querySnapshot = await getDocs(q);
             const records = [];
             querySnapshot.forEach(doc => {
                 records.push(doc.data());
             });
 
-            // تصفية البيانات للأسبوع الماضي (مثال)
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-            const weeklyRecords = records.filter(record => {
-                const recordDate = new Date(record.date);
-                return recordDate >= oneWeekAgo;
-            });
-
-            if (weeklyRecords.length === 0) {
-                showLoginMessage('لا توجد سجلات حضور للأسبوع الماضي.', 'info');
+            if (records.length === 0) {
+                showMessage(adminMessage, 'لا توجد سجلات حضور في النطاق الزمني المحدد.', 'info');
                 return;
             }
 
@@ -710,7 +907,6 @@
             });
 
             // إضافة الخط العربي لدعم اللغة العربية
-            // تم استخدام خط "Amiri-Regular" كمثال
             const fontUrl = 'https://unpkg.com/jspdf-arabic-fix@1.0.1/amiri-regular.ttf';
             const fontName = 'AmiriRegular';
             const response = await fetch(fontUrl);
@@ -721,16 +917,15 @@
 
             // إضافة عنوان التقرير
             doc.setFontSize(22);
-            doc.text('تقرير الحضور الأسبوعي - صيدلية د.رامي', 148, 20, null, null, 'center');
+            doc.text('تقرير الحضور - صيدلية د.رامي', 148, 20, null, null, 'center');
             doc.setFontSize(12);
-            doc.text(`التاريخ: ${new Date().toLocaleDateString('ar-EG')}`, 148, 28, null, null, 'center');
-            doc.text(`الفترة: من ${oneWeekAgo.toLocaleDateString('ar-EG')} إلى ${new Date().toLocaleDateString('ar-EG')}`, 148, 35, null, null, 'center');
+            doc.text(`الفترة: من ${startDate} إلى ${endDate}`, 148, 28, null, null, 'center');
 
             // إعداد البيانات للجدول
             const tableColumn = ["وقت الإنصراف", "وقت الحضور", "التاريخ", "اسم الموظف"];
             const tableRows = [];
 
-            weeklyRecords.forEach(record => {
+            records.forEach(record => {
                 const rowData = [
                     record.checkOut || 'لم يسجل',
                     record.checkIn || 'لم يسجل',
@@ -759,13 +954,13 @@
             });
 
             // حفظ الملف
-            const filename = `تقرير_الحضور_الأسبوعي_${new Date().toISOString().slice(0, 10)}.pdf`;
+            const filename = `تقرير_الحضور_${startDate}_إلى_${endDate}.pdf`;
             doc.save(filename);
 
-            showLoginMessage('تم توليد التقرير بنجاح. يمكنك الآن تنزيله.', 'success');
+            showMessage(adminMessage, 'تم توليد التقرير بنجاح. يمكنك الآن تنزيله.', 'success');
         } catch (error) {
             console.error("Error generating PDF:", error);
-            showLoginMessage('حدث خطأ أثناء توليد التقرير.', 'error');
+            showMessage(adminMessage, 'حدث خطأ أثناء توليد التقرير.', 'error');
         }
     });
 
